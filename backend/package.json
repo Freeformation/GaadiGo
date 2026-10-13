@@ -1,0 +1,39 @@
+{
+  "name": "vahaanrent-backend",
+  "version": "1.0.0",
+  "description": "India-compliant Vehicle Rental Backend with NestJS, MongoDB, GraphQL, and Kafka",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "start": "ts-node src/main.ts",
+    "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:prod": "node dist/main"
+  },
+  "dependencies": {
+    "@apollo/server": "^5.0.0",
+    "@as-integrations/express5": "^1.1.2",
+    "@nestjs/apollo": "^13.0.3",
+    "@nestjs/common": "^11.0.11",
+    "@nestjs/config": "^4.0.1",
+    "@nestjs/core": "^11.0.11",
+    "@nestjs/graphql": "^13.0.3",
+    "@nestjs/mongoose": "^11.0.1",
+    "@nestjs/platform-express": "^11.0.11",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "graphql": "^16.10.0",
+    "kafkajs": "^2.2.4",
+    "mongoose": "^8.12.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.2"
+  }
+}
