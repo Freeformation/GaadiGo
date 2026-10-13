@@ -22,54 +22,56 @@ export default function Navbar({
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20">
-          {/* Logo & Brand */}
-          <div
-            className="flex items-center space-x-3 cursor-pointer group"
-            onClick={() => setActiveTab('landing')}
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow text-white font-extrabold text-xl group-hover:scale-105 transition-transform">
-              <span className="font-display">GG</span>
-            </div>
-            <div>
-              <div className="flex items-center space-x-1.5">
-                <span className="text-xl sm:text-2xl font-black tracking-tight text-foreground font-display">
-                  Gaadi<span className="text-primary">Go</span>
-                </span>
-                <span className="px-1.5 py-0.2 rounded bg-accent text-accent-foreground text-[9px] font-extrabold uppercase tracking-wider border border-primary/20">
-                  IND 🇮🇳
-                </span>
-              </div>
-              <p className="text-[10px] text-muted-foreground tracking-wide font-medium">
-                P2P & Self-Drive Vehicle Sharing
-              </p>
-            </div>
-          </div>
-
-          {/* Dynamic City Selector (Populated from MongoDB) */}
-          <div className="hidden lg:flex items-center space-x-2 bg-muted/70 rounded-full px-3.5 py-1.5 border border-border">
-            <MapPin className="w-3.5 h-3.5 text-primary" />
-            <select
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              className="bg-transparent text-xs text-foreground focus:outline-none cursor-pointer pr-1 font-semibold"
+        <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
+          {/* Left: Brand Logo & City Selector */}
+          <div className="flex items-center space-x-4 lg:space-x-6 shrink-0">
+            <div
+              className="flex items-center space-x-3 cursor-pointer group"
+              onClick={() => setActiveTab('landing')}
             >
-              {cities.map((city) => (
-                <option key={city} value={city} className="bg-card text-foreground">
-                  {city}
-                </option>
-              ))}
-            </select>
+              <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow text-white font-extrabold text-xl group-hover:scale-105 transition-transform">
+                <span className="font-display">GG</span>
+              </div>
+              <div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-xl sm:text-2xl font-black tracking-tight text-foreground font-display">
+                    Gaadi<span className="text-primary">Go</span>
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded bg-accent text-accent-foreground text-[9px] font-extrabold uppercase tracking-wider border border-primary/20">
+                    IND 🇮🇳
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground tracking-wide font-medium">
+                  P2P & Self-Drive Vehicle Sharing
+                </p>
+              </div>
+            </div>
+
+            {/* Dynamic City Selector */}
+            <div className="hidden md:flex items-center space-x-2 bg-muted/60 hover:bg-muted/80 transition rounded-full px-3.5 py-1.5 border border-border">
+              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+              <select
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                className="bg-transparent text-xs text-foreground focus:outline-none cursor-pointer pr-1 font-semibold"
+              >
+                {cities.map((city) => (
+                  <option key={city} value={city} className="bg-card text-foreground">
+                    {city}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Clean Top Navigation Bar */}
-          <nav className="hidden md:flex items-center space-x-1 sm:space-x-2">
-            {/* Common: Landing / Explore */}
+          {/* Center: Main Navigation Menu */}
+          <nav className="hidden md:flex items-center justify-center space-x-1 lg:space-x-2">
+            {/* Explore / Home */}
             <button
               onClick={() => setActiveTab('landing')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 activeTab === 'landing'
-                  ? 'bg-accent text-accent-foreground'
+                  ? 'bg-accent text-accent-foreground font-bold'
                   : 'text-foreground/80 hover:text-foreground hover:bg-muted'
               }`}
             >
@@ -79,9 +81,9 @@ export default function Navbar({
             {/* Rent a Vehicle Catalog */}
             <button
               onClick={() => setActiveTab('renter')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 activeTab === 'renter'
-                  ? 'bg-accent text-accent-foreground'
+                  ? 'bg-accent text-accent-foreground font-bold'
                   : 'text-foreground/80 hover:text-foreground hover:bg-muted'
               }`}
             >
@@ -92,7 +94,7 @@ export default function Navbar({
             {isAuthenticated && (
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
                   activeTab === 'dashboard'
                     ? 'bg-gradient-primary text-primary-foreground shadow-glow'
                     : 'text-foreground/90 hover:text-foreground hover:bg-muted border border-border'
@@ -122,7 +124,7 @@ export default function Navbar({
             {isAuthenticated && role === 'ADMIN' && (
               <button
                 onClick={onOpenKafkaDrawer}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1 text-foreground/80 hover:text-foreground hover:bg-muted cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 text-foreground/80 hover:text-foreground hover:bg-muted cursor-pointer"
                 title="View live Kafka message audit stream"
               >
                 <Activity className="w-3.5 h-3.5 text-primary animate-pulse" />

@@ -1,95 +1,261 @@
-# 🚗 VahaanRent — India-Compliant Peer-to-Peer & Fleet Vehicle Rental Platform
+# 🚗 GaadiGo (VahaanRent) — India Vehicle Rental Marketplace
 
-> A full-stack vehicle rental marketplace designed specifically for the **Indian transport ecosystem**, compliant with the **Motor Vehicles Act 1988**, **Rent-a-Motorcycle Scheme 1997**, **Rent-a-Cab Scheme 1989**, and Central Motor Vehicles Rules (CMVR).
-> Built with **NestJS**, **MongoDB 7.0**, **GraphQL (Apollo Server)**, **Apache Kafka (KRaft mode)**, **React 19**, and **Docker**.
-> **Zero mock data** — backed by real database persistence and distributed event streaming.
-
----
-
-## 🇮🇳 Indian Regulatory & RTO Compliance Features
-
-1. **Vehicle Registration & Legal Plates**:
-   - Supports **Commercial Yellow Plates** (self-drive permits), **Black-Yellow Plates** (Rent-a-cab / Rent-a-motorcycle permits), and **Private Plates** with digital mutual bailment leases under the *Indian Contract Act 1872*.
-   - Central **Parivahan Vahan** Registration Certificate (RC) validation.
-2. **Statutory Document Validation**:
-   - Comprehensive commercial insurance with active validity checks.
-   - Central Motor Vehicles Rules (CMVR) **Pollution Under Control (PUC)** certificate validity (mandatory for non-EVs).
-   - **NPCI FASTag** ID barcode tracking for 4-wheelers with automated toll reconciliation.
-3. **Renter Verification (e-KYC)**:
-   - **DigiLocker & UIDAI**: Masked Aadhaar authentication (`XXXX-XXXX-1234`).
-   - **Parivahan Sarathi Driving License (DL)**: Vehicle class matching:
-     - `MCWOG` (Motorcycle Without Gear) for scooties (Honda Activa, TVS Jupiter).
-     - `MCWG` (Motorcycle With Gear) for motorcycles (Royal Enfield, Yamaha).
-     - `LMV` (Light Motor Vehicle) for passenger cars (Swift, Thar, Nexon EV).
-4. **Road Safety & Speed Governance**:
-   - **Dual Helmet Mandate**: Mandatory provision of up to 2 ISI-certified helmets (BIS 4151) for two-wheelers under Section 129 of the Motor Vehicles Act.
-   - **Speed Governor Compliance**: 80 km/h commercial limiter badge and GPS tracking.
-5. **Invoicing & Escrow Deposits**:
-   - Itemized GST (5% rental service tax).
-   - Security deposits held in escrow with automated UPI refund release upon trip completion.
+> Full-stack peer-to-peer and self-drive vehicle rental marketplace engineered for the **Indian transport ecosystem**, compliant with the **Motor Vehicles Act 1988**, **Rent-a-Motorcycle Scheme 1997**, **Rent-a-Cab Scheme 1989**, and Central Motor Vehicles Rules (CMVR).
+>
+> Built with **Node.js NestJS**, **MongoDB 7.0**, **GraphQL (Apollo Server)**, **Apache Kafka (KRaft mode)**, **React 19 + Tailwind v4**, and **Docker**.
+>
+> **100% Real API & Database-Backed** — Zero static mock data. Backed by live MongoDB persistence, distributed Kafka audit events, and role-based access control (RBAC).
 
 ---
 
-## 🏗️ Architecture & Technology Stack
+## 👥 Pre-Seeded Test User Credentials
 
-- **Frontend**: React 19, Vite 8, Tailwind CSS v4, Lucide React, Apollo Client.
-- **Backend API**: Node.js NestJS framework, TypeScript, Apollo Server (`@nestjs/graphql`).
-- **Database**: MongoDB 7.0 (`@nestjs/mongoose`, Mongoose ODM) with automated seeding of real Indian vehicles.
-- **Event Bus**: Apache Kafka 3.7 (KRaft mode, no Zookeeper required) via `KafkaJS`.
-- **Containers**: Multi-service `docker-compose.yml` for MongoDB, Kafka, NestJS, and React.
+Use these credentials to sign in directly through the UI or API:
+
+| Role | Email | Password | Full Name | Phone | Permissions / Access |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **ADMIN** | `admin@vahaanrent.in` | `password123` | VahaanRent Compliance Officer | `+91 99000 11223` | Full control: RTO reviews, verify/reject vehicles, release UPI escrow deposits, audit all users, bookings & Kafka stream |
+| **HOST** | `vikram.host@vahaanrent.in` | `password123` | Vikramaditya Rao | `+91 98450 12345` | Host Portal: List scooty/bike/car, view registered fleet, inspect earnings & UPI payout summaries |
+| **RENTER** | `priya.renter@vahaanrent.in` | `password123` | Priya Sundaram | `+91 98860 98765` | Renter Portal: Explore fleet, instant DigiLocker e-KYC, book rides with 4-digit pickup OTP, track escrow refund status |
+
+> **Note**: You can also register a brand new account of any role (`RENTER` or `HOST`) via the **Sign In / Create Account** modal on the website.
 
 ---
 
-## 🚀 Quick Start (Docker)
+## 🚀 How to Run the Project
 
-To run the complete platform inside Docker containers:
+You can run the application either with **Docker Compose** (recommended for production-like multi-container execution) or with **Local Development Mode**.
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v20+ recommended)
+- [Docker & Docker Desktop](https://www.docker.com/) (with Docker Compose v2)
+- Git
+
+---
+
+### Option A: Complete Docker Setup (One-Click)
+
+This command boots MongoDB 7.0, Apache Kafka 3.7 (KRaft), the NestJS backend, and the Vite frontend simultaneously:
 
 ```bash
-# 1. Clone repository & build all services
+# 1. Clone repository (if not already done)
+git clone <repo-url>
+cd rent-out-as-new
+
+# 2. Start all services via Docker Compose
 docker compose up --build
 ```
 
-- **Frontend Application**: `http://localhost:5173`
-- **GraphQL API Playground**: `http://localhost:4000/graphql`
+#### Running Endpoints:
+- **Frontend Web Application**: [http://localhost:5173](http://localhost:5173)
+- **Backend REST API**: [http://localhost:4000/api](http://localhost:4000/api)
+- **Apollo GraphQL Playground**: [http://localhost:4000/graphql](http://localhost:4000/graphql)
 - **MongoDB 7.0**: `localhost:27017`
-- **Apache Kafka Cluster**: `localhost:9092` / `localhost:9094`
+- **Apache Kafka (KRaft Broker)**: `localhost:9092` / `localhost:9094`
 
----
-
-## 💻 Local Development Setup
-
-If running locally:
-
+To stop all services:
 ```bash
-# 1. Start MongoDB and Kafka in Docker
-docker compose up -d mongodb kafka
-
-# 2. Start NestJS Backend
-cd backend
-npm install
-npm run start:prod
-# Backend runs at http://localhost:4000/graphql
-
-# 3. Start React Frontend
-cd ../frontend
-npm install
-npm run dev
-# Frontend runs at http://localhost:5173
+docker compose down
 ```
 
 ---
 
-## 📡 Live Kafka Event Stream Topics
+### Option B: Local Development Setup (Step-by-Step)
 
-All major lifecycle events publish messages to the `vahaan.events` Kafka topic:
+#### 1. Start Database & Kafka Containers
+```bash
+docker compose up -d mongodb kafka
+```
 
-| Event Type | Description |
-| :--- | :--- |
-| `vehicle.created` | Emitted when a host submits a new vehicle with RTO RC & PUC details |
-| `vehicle.approved` | Emitted when an Admin reviews and approves the listing |
-| `renter.kyc_submitted` | Emitted when a renter authenticates DL & DigiLocker Aadhaar |
-| `booking.created` | Emitted when a reservation is confirmed with a 4-digit handover OTP |
-| `payment.completed` | Emitted upon UPI transaction confirmation and escrow deposit hold |
-| `deposit.refunded` | Emitted when the host/admin inspects vehicle and releases deposit |
+Verify containers are healthy:
+```bash
+docker ps
+# Ensure 'vahaan-mongodb' and 'vahaan-kafka' are running
+```
 
-You can view the real-time event audit stream directly inside the web UI by clicking the **Live Kafka Stream** pulse button in the top navigation bar!
+#### 2. Start NestJS Backend
+Open a terminal:
+```bash
+cd backend
+npm install
+npm run build
+npm run start:prod
+# Backend listening on http://localhost:4000
+```
+*(On initial startup, MongoDB automatically seeds initial vehicles, KYC records, FAQs, reviews, and test users if the collections are empty.)*
+
+#### 3. Start React Frontend
+Open another terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+# Frontend dev server running on http://localhost:5173
+```
+Open your browser at **http://localhost:5173**.
+
+#### 4. Run Automated RBAC Test Suite
+To verify end-to-end security, role-based access control, and live database queries:
+```bash
+node scratch/test-rbac-enforcement.mjs
+# Runs all 16 automated tests (RBAC validation, REST & GraphQL endpoint tests)
+```
+
+---
+
+## 🏛️ System Architecture & Technical Documentation
+
+### High-Level Architecture Diagram
+
+```
+       ┌────────────────────────────────────────────────────────┐
+       │                   React 19 Frontend                    │
+       │     (Tailwind CSS v4, Apollo Client, Vite Proxy)      │
+       └───────────────────────────┬────────────────────────────┘
+                                   │ HTTP / GraphQL (Bearer Token)
+                                   ▼
+       ┌────────────────────────────────────────────────────────┐
+       │                NestJS Backend Engine                   │
+       │       (Controllers, Resolvers, RolesGuard RBAC)        │
+       └──────────────┬──────────────────────────┬──────────────┘
+                      │                          │
+        Mongoose ODM  │                          │ KafkaJS Producer
+                      ▼                          ▼
+       ┌────────────────────────┐      ┌────────────────────────┐
+       │      MongoDB 7.0       │      │   Apache Kafka 3.7     │
+       │ (Users, Fleet, KYC,    │      │  (KRaft Mode Topic:    │
+       │  Bookings, Content)    │      │    'vahaan.events')    │
+       └────────────────────────┘      └────────────────────────┘
+```
+
+---
+
+### 1. Indian Regulatory & Transport Compliance Model
+
+The platform integrates statutory transport requirements under the **Motor Vehicles Act 1988** and **Ministry of Road Transport and Highways (MoRTH)**:
+
+1. **Vehicle Plate & Registration Classifications**:
+   - `YELLOW_COMMERCIAL`: State commercial self-drive permit plate.
+   - `BLACK_YELLOW_RENTAL`: Rent-a-Cab Scheme 1989 / Rent-a-Motorcycle Scheme 1997.
+   - `PRIVATE_P2P_LEASE`: Peer-to-peer compliant community sharing backed by statutory mutual bailment contract deeds under the *Indian Contract Act 1872*.
+   - Parivahan Vahan Registration Certificate (RC) status verification.
+
+2. **Mandatory Road Safety Standards**:
+   - **Dual Helmet Mandate**: Two-wheelers mandate provision of up to 2 ISI-certified helmets (BIS standard 4151) under Section 129 of the Motor Vehicles Act.
+   - **Speed Governor & Tracking**: 80 km/h commercial limiter badge and GPS tracking.
+   - **CMVR Pollution (PUC) & FASTag**: Active PUC center code check (non-EVs) and NPCI FASTag toll pass-through for 4-wheelers.
+
+3. **DigiLocker & DL Class Verification (e-KYC)**:
+   - Masked Aadhaar authentication (`XXXX-XXXX-1234`).
+   - Parivahan Driving License class validation:
+     - `MCWOG`: Motorcycle Without Gear (Activa, Jupiter).
+     - `MCWG`: Motorcycle With Gear (Royal Enfield, Yamaha).
+     - `LMV`: Light Motor Vehicle (Cars & SUVs).
+
+4. **Escrow Security Deposit & Invoicing**:
+   - Automated itemized 5% GST calculation.
+   - Refundable security deposits safely held in escrow during the rental period.
+   - Admin-controlled UPI escrow release upon trip inspection (supporting partial deductions for challans or tolls).
+
+---
+
+### 2. Role-Based Access Control (RBAC) & Post-Login Flow
+
+Authentication uses Bearer token authorization parsed by `RolesGuard` for both REST endpoints and GraphQL resolvers:
+
+- **GUEST**:
+  - Public landing page, dynamic vehicle catalog, live category rates, FAQs, and testimonials.
+  - No access to administration or host tools.
+- **RENTER**:
+  - Automatically redirects to **My Dashboard** upon login.
+  - Views personal booking history, 4-digit vehicle pickup OTP, trip voucher, and deposit status.
+  - Blocked from administrative approval and deposit release endpoints (HTTP 403 Forbidden).
+- **HOST**:
+  - Automatically redirects to **Host Dashboard** upon login.
+  - Real-time fleet management, submission of new vehicles with RC/PUC, estimated net earnings.
+  - Blocked from admin regulatory controls (HTTP 403 Forbidden).
+- **ADMIN**:
+  - Master administrative portal with complete data control:
+    - **Pending Approvals Queue**: Review RTO compliance documents and approve or reject submissions.
+    - **Fleet Management**: Search, filter, and inspect all vehicles across India.
+    - **Users & Roles**: View all platform users, roles, phone numbers, and KYC verification states.
+    - **Bookings & Escrow**: Manage all reservations and release 100% or partial security deposit escrow refunds via UPI.
+    - **KYC Records**: Review DigiLocker e-KYC submissions, Parivahan DL classifications, and masked Aadhaar records.
+    - **Live Kafka Audit Stream**: Inspect live domain events emitted into Kafka.
+
+---
+
+### 3. Kafka Distributed Event Bus
+
+Major lifecycle operations emit domain events to the `vahaan.events` topic:
+
+| Event Name | Trigger Source | Payload Details |
+| :--- | :--- | :--- |
+| `user.registered` | Auth Module | `userId`, `name`, `email`, `role`, `city` |
+| `user.logged_in` | Auth Module | `userId`, `name`, `email`, `role` |
+| `vehicle.created` | Vehicle / Host Module | `vehicleId`, `title`, `registrationNumber`, `category`, `hostName` |
+| `vehicle.approved` | Admin Module | `vehicleId`, `registrationNumber`, `approvedAt` |
+| `vehicle.rejected` | Admin Module | `vehicleId`, `registrationNumber`, `reason`, `rejectedAt` |
+| `renter.kyc_submitted`| KYC Module | `kycId`, `userName`, `dlNumber`, `verificationStatus` |
+| `booking.created` | Bookings Module | `bookingId`, `vehicleTitle`, `renterName`, `totalAmount`, `pickupOtp` |
+| `security_deposit.released` | Bookings Module | `bookingId`, `refundAmount`, `refundTxnId`, `deductionReason` |
+
+*Admins can monitor these events in real time by clicking the **Kafka Stream** button in the dashboard or navbar.*
+
+---
+
+### 4. GraphQL Schema & Key Operations
+
+The Apollo Server exposes the following core operations:
+
+#### Queries
+- `getVehicles(filter: VehicleFilterInput): [VehicleModel!]!` — Filter by city, category, status.
+- `getBookings: [BookingModel!]!` — Retrieve reservations.
+- `getUsers: [UserModel!]!` — All users (Admin only).
+- `getAdminOverview: AdminOverviewModel!` — Platform KPI metrics.
+- `getKafkaAuditEvents: [KafkaAuditEventModel!]!` — Live event log.
+- `getFaqs: [FaqModel!]!` — Dynamic FAQs from MongoDB.
+- `getReviews: [ReviewModel!]!` — Dynamic verified customer reviews.
+
+#### Mutations
+- `registerUser(input: RegisterInput!): AuthPayloadModel!`
+- `loginUser(input: LoginInput!): AuthPayloadModel!`
+- `createVehicle(input: CreateVehicleInput!): VehicleModel!` *(HOST / ADMIN only)*
+- `approveVehicleListing(id: ID!): VehicleModel!` *(ADMIN only)*
+- `rejectVehicleListing(id: ID!, reason: String!): VehicleModel!` *(ADMIN only)*
+- `submitKyc(input: SubmitKycInput!): KycModel!`
+- `createBooking(input: CreateBookingInput!): BookingModel!`
+- `releaseSecurityDeposit(id: ID!, refundAmount: Float!, deductionReason: String): BookingModel!` *(ADMIN only)*
+
+---
+
+### 5. REST API Endpoints Reference
+
+| Method | Path | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Public | Register new user account |
+| `POST` | `/api/auth/login` | Public | Sign in and receive bearer token |
+| `GET` | `/api/auth/users` | Public / Admin | List all registered platform users |
+| `GET` | `/api/vehicles` | Public | List vehicles (supports `city`, `category`, `status` filters) |
+| `GET` | `/api/vehicles/cities` | Public | Get distinct cities with active vehicles |
+| `GET` | `/api/vehicles/category-rates` | Public | Compute live category daily averages |
+| `POST` | `/api/vehicles` | HOST, ADMIN | Submit new vehicle listing |
+| `PATCH`| `/api/vehicles/:id/approve` | ADMIN | Approve vehicle listing |
+| `PATCH`| `/api/vehicles/:id/reject` | ADMIN | Reject vehicle listing |
+| `POST` | `/api/kyc/verify` | Public | Submit DigiLocker Aadhaar & DL KYC |
+| `GET` | `/api/kyc` | Public / Admin | List all KYC records |
+| `GET` | `/api/bookings` | Public / Auth | List bookings |
+| `POST` | `/api/bookings` | Public / Auth | Create new booking |
+| `POST` | `/api/bookings/:id/release-deposit` | ADMIN | Release escrow deposit |
+| `GET` | `/api/admin/overview` | ADMIN | Retrieve regulatory & financial KPIs |
+| `GET` | `/api/content/faqs` | Public | Fetch dynamic FAQs |
+| `GET` | `/api/content/reviews` | Public | Fetch dynamic verified reviews |
+
+---
+
+## 🔒 Security & Code Standards
+
+- **Password Hashing**: Passwords are encrypted with `bcryptjs` salt rounds before database storage.
+- **RBAC Security Guard**: Global `RolesGuard` inspects `Authorization: Bearer <token>` on all guarded routes.
+- **Vite Reverse Proxy**: All `/api` and `/graphql` calls are proxied locally to prevent CORS issues.
+- **Dynamic Data Integrity**: No hardcoded mock vehicles, rates, FAQs, reviews, or cities.
