@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Search, Star, MapPin, Fuel, Shield, ArrowRight, Zap } from 'lucide-react';
-import { CITIES } from '../Navbar';
 
 export default function VehicleCatalog({
   vehicles = [],
   selectedCity,
   setSelectedCity,
+  cities = ['All Cities'],
   onSelectVehicle,
 }) {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -107,7 +107,7 @@ export default function VehicleCatalog({
               onChange={(e) => setSelectedCity(e.target.value)}
               className="w-full bg-muted/40 border border-input rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer font-medium"
             >
-              {CITIES.map((c) => (
+              {cities.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

@@ -11,6 +11,7 @@ import { UsersModule } from './users/users.module';
 import { KycModule } from './kyc/kyc.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { AdminModule } from './admin/admin.module';
+import { ContentModule } from './content/content.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AdminModule } from './admin/admin.module';
       autoSchemaFile: join(__dirname, 'schema.gql'),
       playground: true,
       introspection: true,
+      context: ({ req }) => ({ req }),
     }),
     DatabaseModule,
     KafkaModule,
@@ -29,6 +31,7 @@ import { AdminModule } from './admin/admin.module';
     KycModule,
     BookingsModule,
     AdminModule,
+    ContentModule,
   ],
 })
 export class AppModule {}

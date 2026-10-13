@@ -1,7 +1,10 @@
 import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
+import { UseGuards } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import { VehicleModel, VehicleStatsModel } from './models/vehicle.model';
 import { CreateVehicleInput, VehicleFilterInput } from './dto/vehicle.dto';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @Resolver(() => VehicleModel)
 export class VehiclesResolver {
@@ -27,12 +30,16 @@ export class VehiclesResolver {
   }
 
   @Mutation(() => VehicleModel)
+  @UseGuards(RolesGuard)
+  @Roles('HOST', 'ADMIN')
   async createVehicle(@Args('input') input: CreateVehicleInput): Promise<VehicleModel> {
     const doc = await this.vehiclesService.create(input);
     return this.mapToModel(doc);
   }
 
   @Mutation(() => VehicleModel)
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   async updateVehicleStatus(
     @Args('id', { type: () => ID }) id: string,
     @Args('status') status: string,

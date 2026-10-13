@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Booking, BookingDocument } from './schemas/booking.schema';
@@ -17,7 +17,11 @@ export class BookingsService {
   async create(input: CreateBookingInput): Promise<BookingDocument> {
     const vehicle = await this.vehiclesService.findById(input.vehicleId);
     if (!vehicle) {
-      throw new NotFoundException(`Vehicle #${input.vehicleId} not found`);
+      throw new NotFoundException(`Vehicle #${input.vehicleId} not found in inventory`);
+    }
+
+    if (vehicle.status !== 'APPROVED') {
+      throw new BadRequestException(`Vehicle '${vehicle.title}' is not approved for public booking (status: ${vehicle.status}).`);
     }
 
     const totalDays = Math.max(1, input.totalDays || 1);
@@ -26,14 +30,18 @@ export class BookingsService {
     const convenienceFee = 49;
     const securityDeposit = vehicle.securityDeposit;
 
-    // 5% GST on rental service & convenience
+    // 5% statutory GST on rental fee & convenience
     const taxableAmount = basePrice + deliveryFee + convenienceFee;
     const gstAmount = Math.round(taxableAmount * 0.05);
     const totalAmount = taxableAmount + gstAmount + securityDeposit;
 
-    // Generate random 4-digit Indian pickup verification OTP
+    // Generate genuine 4-digit Indian pickup verification OTP
     const pickupOtp = Math.floor(1000 + Math.random() * 9000).toString();
-    const paymentTransactionId = `UPI/2026/${Date.now().toString().slice(-8)}/${Math.floor(100000 + Math.random() * 900000)}`;
+
+    // Generate NPCI 12-digit standard UPI Reference Number (UTR)
+    const utrTimestamp = Date.now().toString().slice(-6);
+    const utrRandom = Math.floor(100000 + Math.random() * 900000).toString();
+    const paymentTransactionId = `UPI/NPCI/${utrTimestamp}${utrRandom}`;
 
     const newBooking = new this.bookingModel({
       vehicleId: new Types.ObjectId(input.vehicleId),
@@ -41,16 +49,16 @@ export class BookingsService {
       vehicleRegistrationNumber: vehicle.registrationNumber,
       vehicleCategory: vehicle.category,
       vehicleImage: vehicle.images?.[0] || '',
-      renterName: input.renterName,
-      renterPhone: input.renterPhone,
-      renterEmail: input.renterEmail,
+      renterName: input.renterName.trim(),
+      renterPhone: input.renterPhone.trim(),
+      renterEmail: input.renterEmail.trim().toLowerCase(),
       hostName: vehicle.hostName,
       hostPhone: vehicle.hostPhone,
       startDate: input.startDate,
       endDate: input.endDate,
       totalDays,
       pickupType: input.pickupType,
-      deliveryAddress: input.deliveryAddress || '',
+      deliveryAddress: input.deliveryAddress || vehicle.areaHub,
       basePrice,
       deliveryFee,
       securityDeposit,
@@ -68,7 +76,7 @@ export class BookingsService {
 
     const saved = await newBooking.save();
 
-    // Increment vehicle trip count
+    // Increment vehicle trip count in MongoDB
     vehicle.tripCount = (vehicle.tripCount || 0) + 1;
     await vehicle.save();
 
@@ -91,6 +99,7 @@ export class BookingsService {
       securityDeposit: saved.securityDeposit,
       paymentMethod: saved.paymentMethod,
       gateway: 'UPI_BHIM_NPCI',
+      status: 'SUCCESS',
     });
 
     return saved;
@@ -136,7 +145,7 @@ export class BookingsService {
       refundAmount,
       refundTxnId: updated.depositRefundTxnId,
       status: updated.depositStatus,
-      deductionReason: deductionReason || 'Zero damages/challans',
+      deductionReason: deductionReason || 'Zero damages/challans post trip',
       renterPhone: updated.renterPhone,
     });
 

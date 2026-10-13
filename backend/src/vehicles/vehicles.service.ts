@@ -142,4 +142,45 @@ export class VehiclesService {
       evCount,
     };
   }
+
+  async getCities(): Promise<string[]> {
+    const rawCities = await this.vehicleModel.distinct('city').exec();
+    const cleanCities = (rawCities as string[]).filter(Boolean);
+    return ['All Cities', ...cleanCities.sort()];
+  }
+
+  async getCategoryRates(): Promise<Array<{ category: string; averageDailyRate: number; averageDeposit: number; count: number }>> {
+    const categories = ['SCOOTY', 'BIKE', 'HATCHBACK', 'SUV', 'EV'];
+    const results = [];
+
+    for (const cat of categories) {
+      let filter: any = { category: cat, status: 'APPROVED' };
+      if (cat === 'EV') {
+        filter = { $or: [{ category: 'EV' }, { fuelType: 'ELECTRIC' }], status: 'APPROVED' };
+      }
+      const vehicles = await this.vehicleModel.find(filter).exec();
+      if (vehicles.length > 0) {
+        const avgDaily = Math.round(vehicles.reduce((acc, v) => acc + (v.dailyRate || 0), 0) / vehicles.length);
+        const avgDeposit = Math.round(vehicles.reduce((acc, v) => acc + (v.securityDeposit || 0), 0) / vehicles.length);
+        results.push({
+          category: cat,
+          averageDailyRate: avgDaily,
+          averageDeposit: avgDeposit,
+          count: vehicles.length,
+        });
+      } else {
+        // Fallback default base if category hasn't been listed yet
+        const defaultRate = cat === 'SCOOTY' ? 449 : cat === 'BIKE' ? 899 : cat === 'HATCHBACK' ? 1499 : cat === 'SUV' ? 3499 : 599;
+        const defaultDep = cat === 'SCOOTY' ? 500 : cat === 'BIKE' ? 1500 : cat === 'HATCHBACK' ? 2500 : cat === 'SUV' ? 5000 : 1000;
+        results.push({
+          category: cat,
+          averageDailyRate: defaultRate,
+          averageDeposit: defaultDep,
+          count: 0,
+        });
+      }
+    }
+    return results;
+  }
 }
+

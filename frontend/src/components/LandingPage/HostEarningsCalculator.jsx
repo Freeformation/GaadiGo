@@ -1,74 +1,75 @@
-import React, { useState } from 'react';
-import { IndianRupee, Sparkles, TrendingUp, Check, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { IndianRupee, Sparkles, TrendingUp, Check, ArrowRight, RefreshCw } from 'lucide-react';
 
-const VEHICLE_PRESETS = [
-  {
-    id: 'activa',
-    name: 'Honda Activa 6G / TVS Jupiter',
-    category: 'SCOOTY',
-    dailyRate: 499,
-    typicalMonthly: 14970,
-    fuel: 'Petrol',
-    deposit: 500,
+const CATEGORY_META = {
+  SCOOTY: {
+    name: 'Honda Activa & Scooters',
     icon: '🛵',
+    fuel: 'Petrol',
+    defaultRate: 449,
+    defaultDeposit: 500,
   },
-  {
-    id: 'ather',
-    name: 'Ather 450X / Ola S1 Pro (EV)',
-    category: 'EV SCOOTY',
-    dailyRate: 649,
-    typicalMonthly: 19470,
-    fuel: 'Electric',
-    deposit: 1000,
+  EV: {
+    name: 'Green Electric EVs (Ather/Ola/Nexon)',
     icon: '⚡',
-  },
-  {
-    id: 'bullet',
-    name: 'Royal Enfield Classic 350',
-    category: 'MOTORCYCLE',
-    dailyRate: 999,
-    typicalMonthly: 29970,
-    fuel: 'Petrol',
-    deposit: 1500,
-    icon: '🏍️',
-  },
-  {
-    id: 'swift',
-    name: 'Maruti Swift / Baleno',
-    category: 'HATCHBACK',
-    dailyRate: 1599,
-    typicalMonthly: 47970,
-    fuel: 'Petrol',
-    deposit: 2500,
-    icon: '🚗',
-  },
-  {
-    id: 'nexon_ev',
-    name: 'Tata Nexon EV / Punch EV',
-    category: 'ELECTRIC SUV',
-    dailyRate: 2199,
-    typicalMonthly: 65970,
     fuel: 'Electric',
-    deposit: 3500,
-    icon: '🔋',
+    defaultRate: 1249,
+    defaultDeposit: 2000,
   },
-  {
-    id: 'thar',
-    name: 'Mahindra Thar 4x4 / Scorpio-N',
-    category: 'SUV / 4X4',
-    dailyRate: 3799,
-    typicalMonthly: 113970,
-    fuel: 'Diesel',
-    deposit: 5000,
+  BIKE: {
+    name: 'Royal Enfield & Motorcycles',
+    icon: '🏍️',
+    fuel: 'Petrol',
+    defaultRate: 899,
+    defaultDeposit: 1500,
+  },
+  HATCHBACK: {
+    name: 'Maruti Swift & City Hatchbacks',
+    icon: '🚗',
+    fuel: 'Petrol',
+    defaultRate: 1499,
+    defaultDeposit: 2500,
+  },
+  SUV: {
+    name: 'Mahindra Thar 4x4 & Full SUVs',
     icon: '🚙',
+    fuel: 'Diesel',
+    defaultRate: 3499,
+    defaultDeposit: 5000,
   },
-];
+};
 
 export default function HostEarningsCalculator({ onOpenAddListing }) {
-  const [selectedVehicle, setSelectedVehicle] = useState(VEHICLE_PRESETS[0]);
+  const [categoryRates, setCategoryRates] = useState([]);
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState('SCOOTY');
   const [daysShared, setDaysShared] = useState(20);
+  const [loading, setLoading] = useState(true);
 
-  const estimatedMonthlyGross = selectedVehicle.dailyRate * daysShared;
+  useEffect(() => {
+    fetch('/api/vehicles/category-rates')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCategoryRates(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch dynamic category rates, falling back to defaults:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  // Compute live values for selected category
+  const activeRateData = categoryRates.find((r) => r.category === selectedCategoryKey);
+  const meta = CATEGORY_META[selectedCategoryKey] || CATEGORY_META.SCOOTY;
+
+  const currentDailyRate = activeRateData ? activeRateData.averageDailyRate : meta.defaultRate;
+  const currentDeposit = activeRateData ? activeRateData.averageDeposit : meta.defaultDeposit;
+  const liveFleetCount = activeRateData ? activeRateData.count : 0;
+
+  const estimatedMonthlyGross = currentDailyRate * daysShared;
   const platformFee = Math.round(estimatedMonthlyGross * 0.15); // 15% platform management & insurance
   const netEarnings = estimatedMonthlyGross - platformFee;
   const annualEarnings = netEarnings * 12;
@@ -79,13 +80,13 @@ export default function HostEarningsCalculator({ onOpenAddListing }) {
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-accent text-accent-foreground text-xs font-bold mb-3">
             <TrendingUp className="w-3.5 h-3.5 text-primary" />
-            <span>Host Earnings Calculator</span>
+            <span>Dynamic Host Earnings (Real MongoDB Rates)</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight font-display">
             How Much Can You Earn by Renting Out Your Vehicle?
           </h2>
           <p className="mt-3 text-muted-foreground text-sm sm:text-base font-medium">
-            Select your vehicle model and how many days a month it stays parked. Direct weekly UPI payouts straight into your bank account.
+            Based on active rental listings in India. Direct weekly UPI payouts straight into your bank account.
           </p>
         </div>
 
@@ -93,28 +94,37 @@ export default function HostEarningsCalculator({ onOpenAddListing }) {
           {/* Controls: Vehicle select & slider */}
           <div className="lg:col-span-7 bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-card">
             <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-3">
-              1. Choose Your Vehicle Type
+              1. Choose Vehicle Category
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-6">
-              {VEHICLE_PRESETS.map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => setSelectedVehicle(v)}
-                  className={`flex items-center p-3 rounded-xl border text-left transition cursor-pointer ${
-                    selectedVehicle.id === v.id
-                      ? 'bg-accent/50 border-primary text-foreground font-bold shadow-xs'
-                      : 'bg-card border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                  }`}
-                >
-                  <span className="text-2xl mr-3">{v.icon}</span>
-                  <div className="overflow-hidden">
-                    <p className="text-xs font-bold truncate text-foreground">{v.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      ₹{v.dailyRate}/day • {v.fuel}
-                    </p>
-                  </div>
-                </button>
-              ))}
+              {Object.keys(CATEGORY_META).map((key) => {
+                const itemMeta = CATEGORY_META[key];
+                const matchedRate = categoryRates.find((r) => r.category === key);
+                const rate = matchedRate ? matchedRate.averageDailyRate : itemMeta.defaultRate;
+                const count = matchedRate ? matchedRate.count : 0;
+                const isSelected = selectedCategoryKey === key;
+
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedCategoryKey(key)}
+                    className={`flex items-center p-3 rounded-xl border text-left transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-accent/50 border-primary text-foreground font-bold shadow-xs'
+                        : 'bg-card border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                    }`}
+                  >
+                    <span className="text-2xl mr-3">{itemMeta.icon}</span>
+                    <div className="overflow-hidden">
+                      <p className="text-xs font-bold truncate text-foreground">{itemMeta.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Avg ₹{rate}/day • {count > 0 ? `${count} in live fleet` : itemMeta.fuel}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Slider */}
@@ -189,7 +199,7 @@ export default function HostEarningsCalculator({ onOpenAddListing }) {
 
             <div className="space-y-2.5 py-4 border-y border-white/10 text-xs mb-6">
               <div className="flex justify-between text-secondary-foreground/80">
-                <span>Gross Rental Income ({daysShared}d × ₹{selectedVehicle.dailyRate})</span>
+                <span>Gross Rental Income ({daysShared}d × ₹{currentDailyRate})</span>
                 <span className="font-semibold text-white">₹{estimatedMonthlyGross.toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-secondary-foreground/80">
@@ -198,7 +208,7 @@ export default function HostEarningsCalculator({ onOpenAddListing }) {
               </div>
               <div className="flex justify-between text-secondary-foreground/80">
                 <span>Security Deposit from Renters</span>
-                <span className="font-semibold text-primary-glow">₹{selectedVehicle.deposit} (Held in Escrow)</span>
+                <span className="font-semibold text-primary-glow">₹{currentDeposit} (Held in Escrow)</span>
               </div>
             </div>
 

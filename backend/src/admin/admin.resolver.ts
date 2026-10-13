@@ -1,9 +1,14 @@
 import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
+import { UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminOverviewModel } from './models/admin-overview.model';
 import { VehicleModel } from '../vehicles/models/vehicle.model';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @Resolver()
+@UseGuards(RolesGuard)
+@Roles('ADMIN')
 export class AdminResolver {
   constructor(private readonly adminService: AdminService) {}
 

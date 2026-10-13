@@ -55,14 +55,14 @@ export default function Footer({ setActiveTab }) {
                 </button>
               </li>
               <li>
-                <button onClick={() => setActiveTab('owner')} className="hover:text-primary transition cursor-pointer">
-                  Host Earnings Portal
-                </button>
+                <a href="#how-it-works" onClick={() => setActiveTab('landing')} className="hover:text-primary transition cursor-pointer">
+                  How Rentals Work
+                </a>
               </li>
               <li>
-                <button onClick={() => setActiveTab('admin')} className="hover:text-primary transition cursor-pointer">
-                  Admin Regulatory Portal
-                </button>
+                <a href="#faqs" onClick={() => setActiveTab('landing')} className="hover:text-primary transition cursor-pointer">
+                  Safety & FAQs
+                </a>
               </li>
             </ul>
           </div>

@@ -5,6 +5,7 @@ import {
   GET_BOOKINGS,
   GET_ADMIN_OVERVIEW,
   GET_KAFKA_AUDIT_EVENTS,
+  GET_USERS,
   CREATE_VEHICLE,
   APPROVE_VEHICLE_LISTING,
   REJECT_VEHICLE_LISTING,
@@ -24,6 +25,7 @@ import Footer from './components/LandingPage/Footer';
 
 import AddListingModal from './components/HostPortal/AddListingModal';
 import HostDashboard from './components/HostPortal/HostDashboard';
+import DashboardPage from './components/Dashboard/DashboardPage';
 
 import VehicleCatalog from './components/RenterPortal/VehicleCatalog';
 import VehicleDetailModal from './components/RenterPortal/VehicleDetailModal';
@@ -34,12 +36,27 @@ import BookingSuccessModal from './components/RenterPortal/BookingSuccessModal';
 import AdminDashboard from './components/AdminPortal/AdminDashboard';
 import LiveKafkaStream from './components/LiveKafkaStream';
 import AuthModal from './components/AuthModal';
+import RenterBookingsView from './components/RenterPortal/RenterBookingsView';
 import { useAuth } from './context/AuthContext';
+import { ShieldAlert, Lock, ArrowRight, UserCheck } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function App() {
   const { user, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState('landing'); // landing, renter, owner, admin
+  const [activeTab, setActiveTab] = useState('landing'); // landing, renter, dashboard
   const [selectedCity, setSelectedCity] = useState('All Cities');
+  const [cities, setCities] = useState(['All Cities']);
+
+  useEffect(() => {
+    fetch('/api/vehicles/cities')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCities(data);
+        }
+      })
+      .catch((err) => console.warn('Could not fetch dynamic cities:', err));
+  }, []);
 
   // Modals state
   const [isAddListingOpen, setIsAddListingOpen] = useState(false);
@@ -81,6 +98,30 @@ export default function App() {
     pollInterval: 3000,
   });
 
+  const {
+    data: usersData,
+    refetch: refetchUsers,
+  } = useQuery(GET_USERS, {
+    skip: user?.role !== 'ADMIN',
+    pollInterval: 5000,
+  });
+
+  const [kycRecords, setKycRecords] = useState([]);
+  const fetchKycRecords = () => {
+    if (user?.role === 'ADMIN') {
+      fetch('/api/kyc')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setKycRecords(data);
+        })
+        .catch((err) => console.warn('Could not fetch KYC records:', err));
+    }
+  };
+
+  useEffect(() => {
+    fetchKycRecords();
+  }, [user]);
+
   // Real GraphQL Mutations to MongoDB
   const [createVehicleMutation, { loading: isCreatingVehicle }] = useMutation(CREATE_VEHICLE, {
     onCompleted: () => {
@@ -109,6 +150,7 @@ export default function App() {
   const [submitKycMutation, { loading: isSubmittingKyc }] = useMutation(SUBMIT_KYC, {
     onCompleted: () => {
       refetchKafka();
+      fetchKycRecords();
     },
   });
 
@@ -131,6 +173,7 @@ export default function App() {
 
   const vehicles = vehiclesData?.getVehicles || [];
   const bookings = bookingsData?.getBookings || [];
+  const users = usersData?.getUsers || [];
   const adminOverview = adminOverviewData?.getAdminOverview || null;
   const kafkaEvents = kafkaData?.getKafkaAuditEvents || [];
 
@@ -139,7 +182,7 @@ export default function App() {
     try {
       await createVehicleMutation({ variables: { input } });
       setIsAddListingOpen(false);
-      setActiveTab('owner');
+      setActiveTab('dashboard');
     } catch (err) {
       alert('Error creating listing: ' + err.message);
     }
@@ -171,6 +214,11 @@ export default function App() {
     }
   };
 
+  const renterBookingsCount = bookings.filter((b) => {
+    if (!user) return false;
+    return b.renterPhone === user.phone || b.renterEmail === user.email || b.renterName === user.name;
+  }).length;
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       {/* Navbar */}
@@ -179,6 +227,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         selectedCity={selectedCity}
         setSelectedCity={setSelectedCity}
+        cities={cities}
         onOpenAddListing={() => {
           if (!isAuthenticated) {
             setAuthModalMode('register');
@@ -193,6 +242,7 @@ export default function App() {
           setIsAuthModalOpen(true);
         }}
         kafkaEventCount={kafkaEvents.length}
+        renterBookingsCount={renterBookingsCount}
       />
 
       {/* Main View Port */}
@@ -203,6 +253,7 @@ export default function App() {
             <HeroSection
               selectedCity={selectedCity}
               setSelectedCity={setSelectedCity}
+              cities={cities}
               onSearchVehicles={(filter) => {
                 if (filter.city) setSelectedCity(filter.city);
                 setActiveTab('renter');
@@ -237,36 +288,77 @@ export default function App() {
             vehicles={vehicles}
             selectedCity={selectedCity}
             setSelectedCity={setSelectedCity}
+            cities={cities}
             onSelectVehicle={(v) => setDetailVehicle(v)}
           />
         )}
 
-        {/* 3. Host / Owner Portal View */}
-        {activeTab === 'owner' && (
-          <HostDashboard
-            vehicles={vehicles}
-            onOpenAddListing={() => setIsAddListingOpen(true)}
-            onSwitchToAdmin={() => setActiveTab('admin')}
-          />
+        {/* 3. Post-Login Dedicated Dashboard (Role-Aware: RENTER, HOST, ADMIN) */}
+        {activeTab === 'dashboard' && (
+          !isAuthenticated ? (
+            <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4 border border-primary/20">
+                <UserCheck className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-foreground font-display">
+                Sign In to Access Your Dashboard
+              </h2>
+              <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
+                Please sign in to view your bookings, fleet listings, escrow deposits, or platform admin controls.
+              </p>
+              <div className="mt-6 flex items-center justify-center space-x-3">
+                <button
+                  onClick={() => {
+                    setAuthModalMode('login');
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-xs shadow-glow hover:opacity-95 transition cursor-pointer"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setActiveTab('renter')}
+                  className="px-5 py-2.5 rounded-xl bg-muted border border-border text-foreground font-bold text-xs hover:bg-muted/80 transition cursor-pointer"
+                >
+                  Explore Fleet
+                </button>
+              </div>
+            </div>
+          ) : (
+            <DashboardPage
+              vehicles={vehicles}
+              bookings={bookings}
+              users={users}
+              kycRecords={kycRecords}
+              adminOverview={adminOverview}
+              onApproveVehicle={handleApproveVehicle}
+              onRejectVehicle={handleRejectVehicle}
+              onReleaseDeposit={handleReleaseDeposit}
+              onRefreshData={() => {
+                refetchVehicles();
+                refetchBookings();
+                refetchAdmin();
+                refetchKafka();
+                if (user?.role === 'ADMIN') {
+                  refetchUsers();
+                  fetchKycRecords();
+                }
+              }}
+              onViewKafkaEvents={() => setIsKafkaDrawerOpen(true)}
+              onOpenAddListing={() => setIsAddListingOpen(true)}
+              onExploreVehicles={() => setActiveTab('renter')}
+              onViewVoucher={(b) => setConfirmedBooking(b)}
+              isActionLoading={isApprovingVehicle || isRejectingVehicle || isReleasingDeposit}
+            />
+          )
         )}
 
-        {/* 4. Admin Compliance Portal View */}
-        {activeTab === 'admin' && (
-          <AdminDashboard
-            vehicles={vehicles}
+        {/* 4. Backward Compatibility: Direct Bookings view */}
+        {activeTab === 'bookings' && (
+          <RenterBookingsView
             bookings={bookings}
-            adminOverview={adminOverview}
-            onApproveVehicle={handleApproveVehicle}
-            onRejectVehicle={handleRejectVehicle}
-            onReleaseDeposit={handleReleaseDeposit}
-            onRefreshData={() => {
-              refetchVehicles();
-              refetchBookings();
-              refetchAdmin();
-              refetchKafka();
-            }}
-            onViewKafkaEvents={() => setIsKafkaDrawerOpen(true)}
-            isActionLoading={isApprovingVehicle || isRejectingVehicle || isReleasingDeposit}
+            onExploreVehicles={() => setActiveTab('renter')}
+            onViewVoucher={(b) => setConfirmedBooking(b)}
           />
         )}
       </main>
@@ -351,12 +443,8 @@ export default function App() {
         isOpen={isAuthModalOpen}
         initialMode={authModalMode}
         onClose={() => setIsAuthModalOpen(false)}
-        onAuthSuccess={(authedUser) => {
-          if (authedUser.role === 'HOST') {
-            setActiveTab('owner');
-          } else {
-            setActiveTab('renter');
-          }
+        onAuthSuccess={() => {
+          setActiveTab('dashboard');
         }}
       />
     </div>

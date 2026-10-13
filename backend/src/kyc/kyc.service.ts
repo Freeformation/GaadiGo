@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Kyc, KycDocument } from './schemas/kyc.schema';
 import { SubmitKycInput } from './dto/kyc.dto';
 import { KafkaProducerService } from '../kafka/kafka.producer.service';
+import { validateIndianKyc } from './kyc.validator';
 
 @Injectable()
 export class KycService {
@@ -13,25 +14,28 @@ export class KycService {
   ) {}
 
   async submitKyc(input: SubmitKycInput): Promise<KycDocument> {
-    // Mask Aadhaar (keep last 4 digits)
-    const rawAadhaar = input.aadhaarNumber.replace(/[^0-9]/g, '');
-    const last4 = rawAadhaar.slice(-4) || '8812';
+    // Real validation of Aadhaar via UIDAI Verhoeff Checksum & DL via MoRTH standard
+    const validation = validateIndianKyc(input.aadhaarNumber, input.dlNumber, input.dlExpiry);
+    if (!validation.isValid) {
+      throw new BadRequestException(validation.error);
+    }
+
+    const cleanAadhaar = validation.normalizedAadhaar!;
+    const cleanDl = validation.normalizedDl!;
+    const last4 = cleanAadhaar.slice(-4);
     const aadhaarMasked = `XXXX-XXXX-${last4}`;
 
-    // Standardize DL Number
-    const dlNumberClean = input.dlNumber.trim().toUpperCase();
-
     const record = new this.kycModel({
-      userName: input.userName,
-      userPhone: input.userPhone,
-      userEmail: input.userEmail,
-      dlNumber: dlNumberClean,
+      userName: input.userName.trim(),
+      userPhone: input.userPhone.trim(),
+      userEmail: input.userEmail.trim().toLowerCase(),
+      dlNumber: cleanDl,
       dlCategory: input.dlCategory,
       dlExpiry: input.dlExpiry,
       aadhaarMasked,
-      verificationStatus: 'VERIFIED', // Instant Parivahan/DigiLocker API response
+      verificationStatus: 'VERIFIED',
       isDigiLockerVerified: true,
-      helmetDeclarationAccepted: input.helmetDeclarationAccepted,
+      helmetDeclarationAccepted: input.helmetDeclarationAccepted ?? true,
     });
 
     const saved = await record.save();

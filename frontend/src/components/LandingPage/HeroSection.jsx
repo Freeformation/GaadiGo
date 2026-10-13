@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Search, Calendar, MapPin, Sparkles, ShieldCheck, IndianRupee, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
-import { CITIES } from '../Navbar';
 
 export default function HeroSection({
   selectedCity,
   setSelectedCity,
+  cities = ['All Cities'],
   onSearchVehicles,
   onOpenAddListing,
 }) {
@@ -89,7 +89,7 @@ export default function HeroSection({
                 onChange={(e) => setSelectedCity(e.target.value)}
                 className="w-full bg-transparent text-xs sm:text-sm font-bold text-foreground focus:outline-none cursor-pointer"
               >
-                {CITIES.map((c) => (
+                {cities.map((c) => (
                   <option key={c} value={c} className="bg-card text-foreground">
                     {c}
                   </option>

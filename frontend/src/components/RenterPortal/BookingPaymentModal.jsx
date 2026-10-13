@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, IndianRupee, QrCode, Smartphone, CreditCard, Check, ArrowRight, Lock, CheckCircle2 } from 'lucide-react';
+import { X, Lock, CheckCircle2, ArrowRight, QrCode, AlertCircle, Smartphone } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export default function BookingPaymentModal({
   isOpen,
@@ -9,18 +10,30 @@ export default function BookingPaymentModal({
   onBookingSuccess,
   isSubmitting,
 }) {
+  const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState('UPI_GPAY');
+  const [upiId, setUpiId] = useState(user?.email ? `${user.email.split('@')[0]}@okhdfcbank` : '');
   const [agreementChecked, setAgreementChecked] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState(null);
 
   if (!isOpen || !bookingData) return null;
 
   const vehicle = bookingData.vehicle;
 
   const handlePay = async () => {
+    setError(null);
+
     if (!agreementChecked) {
-      alert('Please accept the digital rental agreement.');
+      setError('Please accept the digital bailment and rental agreement.');
       return;
+    }
+
+    if (paymentMethod.startsWith('UPI_') && paymentMethod !== 'UPI_BHIM_QR') {
+      if (!upiId.trim() || !upiId.includes('@')) {
+        setError('Please enter a valid Indian UPI ID (e.g. name@okhdfcbank, mobile@paytm).');
+        return;
+      }
     }
 
     setProcessing(true);
@@ -33,15 +46,15 @@ export default function BookingPaymentModal({
 
       const input = {
         vehicleId: vehicle.id,
-        renterName: bookingData.renterName,
-        renterPhone: bookingData.renterPhone,
-        renterEmail: bookingData.renterEmail,
+        renterName: bookingData.renterName || user?.name || 'Verified Renter',
+        renterPhone: bookingData.renterPhone || user?.phone || '+91 99000 00000',
+        renterEmail: bookingData.renterEmail || user?.email || 'renter@gaadigo.in',
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         totalDays: bookingData.totalDays,
         pickupType: bookingData.pickupType,
         deliveryAddress: vehicle.areaHub,
-        paymentMethod,
+        paymentMethod: paymentMethod === 'UPI_BHIM_QR' ? 'UPI_QR_NPCI' : paymentMethod,
       };
 
       const result = await onSubmitBookingMutation(input);
@@ -49,27 +62,29 @@ export default function BookingPaymentModal({
       onBookingSuccess(result);
     } catch (err) {
       setProcessing(false);
-      alert('Booking error: ' + err.message);
+      setError(err.message || 'Payment processing failed. Please try again.');
     }
   };
 
+  const dynamicUpiUri = `upi://pay?pa=gaadigo.escrow@icici&pn=GaadiGo%20India&am=${bookingData.grandTotal}&cu=INR&tn=Booking_${vehicle.registrationNumber}`;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-card text-card-foreground border border-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-8">
         {/* Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div className="p-5 border-b border-border flex items-center justify-between bg-muted/30">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+            <div className="w-8 h-8 rounded-xl bg-gradient-primary text-white flex items-center justify-center shadow-xs">
               <Lock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Secure Checkout & UPI Pay</h3>
-              <p className="text-[11px] text-slate-400">128-Bit NPCI Encrypted Gateway</p>
+              <h3 className="text-sm font-bold text-foreground font-display">NPCI Unified Payments Checkout</h3>
+              <p className="text-[11px] text-muted-foreground">Bank-Grade Escrow Security Deposit</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -77,43 +92,56 @@ export default function BookingPaymentModal({
 
         {/* Body */}
         <div className="p-6 space-y-5">
+          {error && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-xs text-destructive flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
           {/* Summary Box */}
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
-            <div className="flex justify-between items-center pb-2 border-b border-slate-850">
-              <span className="font-bold text-white text-sm">{vehicle.title}</span>
-              <span className="font-mono text-amber-400 font-bold">{vehicle.registrationNumber}</span>
+          <div className="bg-muted/40 p-4 rounded-xl border border-border space-y-2 text-xs">
+            <div className="flex justify-between items-center pb-2 border-b border-border">
+              <span className="font-bold text-foreground text-sm font-display">{vehicle.title}</span>
+              <span className="font-mono text-xs px-2 py-0.5 rounded bg-amber-300 text-slate-950 font-bold border border-amber-400">
+                {vehicle.registrationNumber}
+              </span>
             </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Rental Period:</span>
-              <span className="text-white">{bookingData.totalDays} Days ({bookingData.pickupType === 'HUB_PICKUP' ? 'Hub Pickup' : 'Doorstep'})</span>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Rental Duration:</span>
+              <span className="text-foreground font-medium">
+                {bookingData.totalDays} Days ({bookingData.pickupType === 'HUB_PICKUP' ? 'Hub Handover' : 'Doorstep Delivery'})
+              </span>
             </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Renter / KYC:</span>
-              <span className="text-white font-medium">{bookingData.renterName} (Verified)</span>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Renter KYC:</span>
+              <span className="text-foreground font-medium">{bookingData.renterName} (Verified)</span>
             </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Refundable Security Deposit:</span>
-              <span className="text-emerald-400 font-bold">₹{bookingData.securityDeposit} (In Escrow)</span>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Security Deposit (Refundable):</span>
+              <span className="text-primary font-bold">₹{bookingData.securityDeposit} (Escrow Protected)</span>
             </div>
-            <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-sm font-bold text-white">
-              <span>Total Payable Amount</span>
-              <span className="text-base text-emerald-400 font-extrabold">₹{bookingData.grandTotal.toLocaleString('en-IN')}</span>
+            <div className="flex justify-between items-center pt-2 border-t border-border text-sm font-bold text-foreground">
+              <span>Total Payable (incl. 5% GST):</span>
+              <span className="text-lg text-foreground font-black font-display">
+                ₹{bookingData.grandTotal.toLocaleString('en-IN')}
+              </span>
             </div>
           </div>
 
           {/* Payment Method Selector */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-              Select Payment Method
+            <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-2">
+              Select Payment Gateway
             </label>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: 'UPI_GPAY', name: 'Google Pay (UPI)', icon: '📱' },
                 { id: 'UPI_PHONEPE', name: 'PhonePe (UPI)', icon: '🟣' },
-                { id: 'UPI_PAYTM', name: 'Paytm UPI / Wallet', icon: '🔵' },
-                { id: 'UPI_BHIM_QR', name: 'BHIM Dynamic QR', icon: '📷' },
-                { id: 'CREDIT_DEBIT_CARD', name: 'Credit / Debit Card', icon: '💳' },
-                { id: 'NET_BANKING', name: 'Net Banking (All Banks)', icon: '🏛️' },
+                { id: 'UPI_PAYTM', name: 'Paytm UPI', icon: '🔵' },
+                { id: 'UPI_BHIM_QR', name: 'Scan NPCI QR Code', icon: '📷' },
+                { id: 'CREDIT_DEBIT_CARD', name: 'Debit / Credit Card', icon: '💳' },
+                { id: 'NET_BANKING', name: 'NetBanking (NEFT/RTGS)', icon: '🏛️' },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -121,8 +149,8 @@ export default function BookingPaymentModal({
                   onClick={() => setPaymentMethod(m.id)}
                   className={`p-3 rounded-xl border text-left text-xs transition cursor-pointer flex items-center space-x-2 ${
                     paymentMethod === m.id
-                      ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300 font-bold'
-                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-accent/40 border-primary text-foreground font-bold shadow-xs'
+                      : 'bg-card border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
                   }`}
                 >
                   <span className="text-base">{m.icon}</span>
@@ -132,31 +160,55 @@ export default function BookingPaymentModal({
             </div>
           </div>
 
-          {/* UPI ID / QR Preview */}
-          <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
-            <div className="flex items-center space-x-2.5">
-              <QrCode className="w-6 h-6 text-emerald-400" />
+          {/* UPI ID input or QR display */}
+          {paymentMethod === 'UPI_BHIM_QR' ? (
+            <div className="p-4 bg-muted/40 rounded-xl border border-border text-center space-y-3">
+              <div className="w-36 h-36 mx-auto bg-white p-2 rounded-xl border border-border shadow-xs flex items-center justify-center">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(dynamicUpiUri)}`}
+                  alt="NPCI UPI QR Code"
+                  className="w-full h-full object-contain"
+                />
+              </div>
               <div>
-                <p className="font-bold text-white">Instant UPI Auto-Debit & Escrow</p>
-                <p className="text-[10px] text-slate-400">Zero surcharge on UPI transactions</p>
+                <p className="text-xs font-bold text-foreground">Scan with any UPI App</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Google Pay, PhonePe, Paytm, BHIM or Cred
+                </p>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
-              Verified Merchant
-            </span>
-          </div>
+          ) : paymentMethod.startsWith('UPI_') ? (
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Enter Your UPI ID / VPA
+              </label>
+              <div className="relative">
+                <Smartphone className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="e.g. yourname@okhdfcbank"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-input bg-card focus:outline-none focus:ring-1 focus:ring-primary text-foreground font-mono"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                A collect request for ₹{bookingData.grandTotal.toLocaleString('en-IN')} will be verified on your UPI app.
+              </p>
+            </div>
+          ) : null}
 
-          {/* Digital Bailee Lease Agreement */}
-          <div className="p-3 bg-slate-950/90 rounded-xl border border-slate-800">
+          {/* Digital Agreement */}
+          <div className="p-3 bg-muted/30 rounded-xl border border-border">
             <label className="flex items-start space-x-2.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={agreementChecked}
                 onChange={(e) => setAgreementChecked(e.target.checked)}
-                className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 mt-0.5"
+                className="w-4 h-4 rounded text-primary mt-0.5"
               />
-              <span className="text-[11px] text-slate-300 leading-snug">
-                I accept the <strong className="text-white">Digital Vehicle Rental & Bailment Agreement</strong> under the Indian Contract Act 1872. I agree to pay any e-challans or toll charges incurred during my trip.
+              <span className="text-[11px] text-muted-foreground leading-snug">
+                I accept the <strong className="text-foreground">Digital Bailment & Vehicle Rental Agreement</strong> under the Indian Contract Act 1872. I agree to pay any e-challans or toll charges incurred during my trip.
               </span>
             </label>
           </div>
@@ -166,7 +218,7 @@ export default function BookingPaymentModal({
             type="button"
             disabled={processing || isSubmitting}
             onClick={handlePay}
-            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/25 flex items-center justify-center space-x-2 transition cursor-pointer disabled:opacity-50"
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-xs uppercase tracking-wider shadow-glow hover:opacity-95 transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
           >
             <span>
               {processing || isSubmitting

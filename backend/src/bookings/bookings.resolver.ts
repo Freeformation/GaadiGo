@@ -1,7 +1,10 @@
 import { Resolver, Query, Mutation, Args, ID, Float } from '@nestjs/graphql';
+import { UseGuards } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { BookingModel } from './models/booking.model';
 import { CreateBookingInput } from './dto/booking.dto';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @Resolver(() => BookingModel)
 export class BookingsResolver {
@@ -32,6 +35,8 @@ export class BookingsResolver {
   }
 
   @Mutation(() => BookingModel)
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   async releaseSecurityDeposit(
     @Args('id', { type: () => ID }) id: string,
     @Args('refundAmount', { type: () => Float }) refundAmount: number,

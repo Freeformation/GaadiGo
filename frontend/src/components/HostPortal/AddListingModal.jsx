@@ -16,15 +16,15 @@ export default function AddListingModal({ isOpen, onClose, onSubmitListing, isSu
     fuelType: 'PETROL',
     transmission: 'AUTOMATIC',
     seatingCapacity: 2,
-    hostName: user?.name || 'Vikramaditya Rao',
-    hostPhone: user?.phone || '+91 98450 12345',
+    hostName: user?.name || '',
+    hostPhone: user?.phone || '',
 
     // Step 2: India Regulatory & RTO
     registrationNumber: '',
     plateType: 'YELLOW_COMMERCIAL',
     insurancePolicyNumber: '',
     insuranceCompany: 'HDFC ERGO General Insurance',
-    insuranceExpiry: '2027-10-15',
+    insuranceExpiry: '2027-12-31',
     pucExpiry: '2026-12-31',
     fastagId: '',
     speedGovernorFitted: false,
@@ -32,10 +32,10 @@ export default function AddListingModal({ isOpen, onClose, onSubmitListing, isSu
     gpsTracked: true,
 
     // Step 3: Location Hub
-    city: 'Bengaluru',
-    areaHub: 'Indiranagar Metro Hub',
-    pincode: '560038',
-    address: '100 Feet Road, Indiranagar',
+    city: user?.city || 'Bengaluru',
+    areaHub: '',
+    pincode: '',
+    address: '',
     doorstepDeliveryAvailable: true,
     doorstepDeliveryFee: 149,
 

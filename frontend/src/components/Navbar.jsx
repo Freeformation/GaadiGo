@@ -1,31 +1,23 @@
-import React from 'react';
-import { Sparkles, MapPin, Activity, User, LogOut, ChevronDown, ShieldAlert } from 'lucide-react';
+import { Sparkles, MapPin, Activity, ShieldAlert, LogOut, Car, Calendar, Key, Plus, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { FALLBACK_CITIES } from '../utils/cities';
 
-export const CITIES = [
-  'All Cities',
-  'Bengaluru',
-  'Goa',
-  'Delhi NCR',
-  'Mumbai',
-  'Hyderabad',
-  'Pune',
-  'Rishikesh',
-  'Jaipur',
-  'Manali',
-];
+export const CITIES = FALLBACK_CITIES;
 
 export default function Navbar({
   activeTab,
   setActiveTab,
   selectedCity,
   setSelectedCity,
+  cities = ['All Cities'],
   onOpenAddListing,
   onOpenKafkaDrawer,
   onOpenAuthModal,
   kafkaEventCount = 0,
+  renterBookingsCount = 0,
 }) {
   const { user, isAuthenticated, logout } = useAuth();
+  const role = user?.role; // 'RENTER' | 'HOST' | 'ADMIN' | undefined
 
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-xs">
@@ -44,7 +36,7 @@ export default function Navbar({
                 <span className="text-xl sm:text-2xl font-black tracking-tight text-foreground font-display">
                   Gaadi<span className="text-primary">Go</span>
                 </span>
-                <span className="px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider rounded bg-accent text-accent-foreground border border-primary/20">
+                <span className="px-1.5 py-0.2 rounded bg-accent text-accent-foreground text-[9px] font-extrabold uppercase tracking-wider border border-primary/20">
                   IND 🇮🇳
                 </span>
               </div>
@@ -54,7 +46,7 @@ export default function Navbar({
             </div>
           </div>
 
-          {/* City Selector */}
+          {/* Dynamic City Selector (Populated from MongoDB) */}
           <div className="hidden lg:flex items-center space-x-2 bg-muted/70 rounded-full px-3.5 py-1.5 border border-border">
             <MapPin className="w-3.5 h-3.5 text-primary" />
             <select
@@ -62,7 +54,7 @@ export default function Navbar({
               onChange={(e) => setSelectedCity(e.target.value)}
               className="bg-transparent text-xs text-foreground focus:outline-none cursor-pointer pr-1 font-semibold"
             >
-              {CITIES.map((city) => (
+              {cities.map((city) => (
                 <option key={city} value={city} className="bg-card text-foreground">
                   {city}
                 </option>
@@ -70,11 +62,12 @@ export default function Navbar({
             </select>
           </div>
 
-          {/* Navigation Links */}
+          {/* Clean Top Navigation Bar */}
           <nav className="hidden md:flex items-center space-x-1 sm:space-x-2">
+            {/* Common: Landing / Explore */}
             <button
               onClick={() => setActiveTab('landing')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 activeTab === 'landing'
                   ? 'bg-accent text-accent-foreground'
                   : 'text-foreground/80 hover:text-foreground hover:bg-muted'
@@ -83,9 +76,10 @@ export default function Navbar({
               Explore
             </button>
 
+            {/* Rent a Vehicle Catalog */}
             <button
               onClick={() => setActiveTab('renter')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 activeTab === 'renter'
                   ? 'bg-accent text-accent-foreground'
                   : 'text-foreground/80 hover:text-foreground hover:bg-muted'
@@ -94,56 +88,76 @@ export default function Navbar({
               Rent a Vehicle
             </button>
 
-            <button
-              onClick={() => setActiveTab('owner')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                activeTab === 'owner'
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              Host Earnings
-            </button>
+            {/* POST-LOGIN: My Dashboard (Dynamic based on role) */}
+            {isAuthenticated && (
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                  activeTab === 'dashboard'
+                    ? 'bg-gradient-primary text-primary-foreground shadow-glow'
+                    : 'text-foreground/90 hover:text-foreground hover:bg-muted border border-border'
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>
+                  {role === 'ADMIN'
+                    ? 'Admin Dashboard'
+                    : role === 'HOST'
+                    ? 'Host Dashboard'
+                    : 'My Dashboard'}
+                </span>
+                {role === 'RENTER' && renterBookingsCount > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                    activeTab === 'dashboard'
+                      ? 'bg-white text-slate-900'
+                      : 'bg-primary text-primary-foreground'
+                  }`}>
+                    {renterBookingsCount}
+                  </span>
+                )}
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1 ${
-                activeTab === 'admin'
-                  ? 'bg-secondary text-secondary-foreground'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-primary" />
-              <span>Admin Compliance</span>
-            </button>
+            {/* Admin Live Kafka Audit Stream Pulse */}
+            {isAuthenticated && role === 'ADMIN' && (
+              <button
+                onClick={onOpenKafkaDrawer}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1 text-foreground/80 hover:text-foreground hover:bg-muted cursor-pointer"
+                title="View live Kafka message audit stream"
+              >
+                <Activity className="w-3.5 h-3.5 text-primary animate-pulse" />
+                <span>Kafka Stream</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-primary/10 text-primary font-bold text-[10px]">
+                  {kafkaEventCount}
+                </span>
+              </button>
+            )}
           </nav>
 
           {/* Action CTAs & Auth Controls */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Kafka Audit Stream Monitor Button */}
-            <button
-              onClick={onOpenKafkaDrawer}
-              title="View live Kafka message events and audit stream"
-              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-card border border-border text-foreground hover:border-primary/40 text-xs font-medium transition cursor-pointer shadow-xs"
-            >
-              <Activity className="w-3.5 h-3.5 text-primary animate-pulse" />
-              <span className="hidden sm:inline text-[11px] font-semibold text-muted-foreground">
-                Kafka Events
-              </span>
-              <span className="px-1.5 py-0.2 rounded-full bg-primary/10 text-primary font-bold text-[10px]">
-                {kafkaEventCount}
-              </span>
-            </button>
-
-            {/* Auth Button or User Profile */}
+            {/* User Profile or Sign In */}
             {isAuthenticated ? (
               <div className="flex items-center space-x-2 bg-muted/60 p-1 pl-2.5 rounded-xl border border-border">
                 <div className="text-left hidden sm:block">
                   <div className="text-xs font-bold text-foreground leading-tight">
                     {user?.name}
                   </div>
-                  <div className="text-[10px] text-muted-foreground font-medium uppercase">
-                    {user?.role}
+                  <div className="flex items-center space-x-1">
+                    <span
+                      className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded ${
+                        user?.role === 'ADMIN'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                          : user?.role === 'HOST'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                      }`}
+                    >
+                      {user?.role}
+                    </span>
+                    {user?.city && (
+                      <span className="text-[10px] text-muted-foreground">• {user.city}</span>
+                    )}
                   </div>
                 </div>
 
@@ -168,20 +182,38 @@ export default function Navbar({
               </button>
             )}
 
-            {/* List Vehicle Button */}
-            <button
-              onClick={() => {
-                if (!isAuthenticated) {
-                  onOpenAuthModal('register');
-                } else {
-                  onOpenAddListing();
-                }
-              }}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-xs shadow-glow hover:opacity-95 transition cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>List Your Vehicle</span>
-            </button>
+            {/* List Vehicle Button (Adapts to Role) */}
+            {role === 'HOST' ? (
+              <button
+                onClick={onOpenAddListing}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-xs shadow-glow hover:opacity-95 transition cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Listing</span>
+              </button>
+            ) : role === 'ADMIN' ? (
+              <button
+                onClick={onOpenAddListing}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-secondary text-secondary-foreground font-bold text-xs hover:bg-secondary/90 transition cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Register Fleet</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    onOpenAuthModal('register');
+                  } else {
+                    onOpenAddListing();
+                  }
+                }}
+                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-xs shadow-glow hover:opacity-95 transition cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>List Your Vehicle</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

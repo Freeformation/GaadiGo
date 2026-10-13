@@ -275,3 +275,30 @@ export const GET_USERS = gql`
   }
 `;
 
+export const GET_FAQS = gql`
+  query GetFaqs {
+    getFaqs {
+      id
+      question
+      answer
+      category
+      order
+    }
+  }
+`;
+
+export const GET_REVIEWS = gql`
+  query GetReviews {
+    getReviews {
+      id
+      name
+      role
+      quote
+      rating
+      vehicleTitle
+      city
+    }
+  }
+`;
+
+
