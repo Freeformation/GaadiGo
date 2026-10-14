@@ -1,27 +1,50 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Phone, MapPin, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
+import {
+  X,
+  Mail,
+  Lock,
+  User,
+  Phone,
+  MapPin,
+  CheckCircle,
+  AlertCircle,
+  ArrowRight,
+  KeyRound,
+  ShieldCheck,
+  Check,
+  Sparkles
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { CITIES } from './Navbar';
 
 export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAuthSuccess }) {
-  const { login, register } = useAuth();
-  const [mode, setMode] = useState(initialMode); // 'login' | 'register'
+  const { login, register, requestPasswordReset, resetPasswordWithOtp } = useAuth();
+  const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'forgot'
   const [role, setRole] = useState('RENTER'); // 'RENTER' | 'HOST'
   const [error, setError] = useState(null);
+  const [infoMessage, setInfoMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Form states
+  // Form states for login/register
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('+91 ');
   const [city, setCity] = useState('Bengaluru');
 
+  // Forgot Password multi-step states
+  const [forgotStep, setForgotStep] = useState(1); // 1: enter email, 2: enter otp & new pass
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [simulatedOtp, setSimulatedOtp] = useState('');
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setInfoMessage(null);
     setLoading(true);
 
     try {
@@ -32,10 +55,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
         const authedUser = await login(email.trim(), password);
         if (onAuthSuccess) onAuthSuccess(authedUser);
         onClose();
-      } else {
+      } else if (mode === 'register') {
         if (!name.trim()) throw new Error('Please enter your legal name (as on Aadhaar/DL)');
         if (!email.trim() || !email.includes('@')) throw new Error('Please enter a valid email address');
-        if (!phone.trim() || phone.trim().length < 10) throw new Error('Please enter a valid 10-digit Indian mobile number');
+        if (!phone.trim() || phone.trim().length < 10)
+          throw new Error('Please enter a valid 10-digit Indian mobile number');
         if (!password || password.length < 6) throw new Error('Password must be at least 6 characters');
 
         const authedUser = await register({
@@ -48,9 +72,41 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
         });
         if (onAuthSuccess) onAuthSuccess(authedUser);
         onClose();
+      } else if (mode === 'forgot') {
+        if (forgotStep === 1) {
+          if (!email.trim() || !email.includes('@')) throw new Error('Please enter a valid registered email address');
+
+          const res = await requestPasswordReset(email.trim());
+          if (res?.simulatedOtp) {
+            setSimulatedOtp(res.simulatedOtp);
+            setForgotOtp(res.simulatedOtp); // Auto-fill in demo mode
+            setInfoMessage(
+              `Demo OTP generated: ${res.simulatedOtp}. It has been auto-filled below for instant testing.`
+            );
+          } else {
+            setInfoMessage('Verification OTP dispatched to your registered email / SMS.');
+          }
+          setForgotStep(2);
+        } else {
+          // Step 2: verify OTP & set new password
+          if (!forgotOtp.trim()) throw new Error('Please enter the 6-digit OTP code.');
+          if (!forgotNewPassword || forgotNewPassword.length < 6)
+            throw new Error('New password must be at least 6 characters.');
+          if (forgotNewPassword !== forgotConfirmPassword)
+            throw new Error('New passwords do not match. Please verify.');
+
+          const authedUser = await resetPasswordWithOtp({
+            email: email.trim(),
+            otp: forgotOtp.trim(),
+            newPassword: forgotNewPassword,
+          });
+
+          if (onAuthSuccess) onAuthSuccess(authedUser);
+          onClose();
+        }
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please verify your credentials.');
+      setError(err.message || 'Operation failed. Please verify your details.');
     } finally {
       setLoading(false);
     }
@@ -73,45 +129,69 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
             GG
           </div>
           <h2 className="text-2xl font-extrabold text-foreground tracking-tight font-display">
-            {mode === 'login' ? 'Sign in to GaadiGo' : 'Create Your GaadiGo Account'}
+            {mode === 'login'
+              ? 'Sign in to GaadiGo'
+              : mode === 'register'
+              ? 'Create Your GaadiGo Account'
+              : 'Reset Your Password'}
           </h2>
           <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
             {mode === 'login'
               ? 'Access your self-drive bookings, KYC verification, and host earnings.'
-              : 'Join India’s peer-to-peer vehicle sharing network as a renter or host.'}
+              : mode === 'register'
+              ? 'Join India’s peer-to-peer vehicle sharing network as a renter or host.'
+              : 'Enter your registered email to receive an OTP and restore account access.'}
           </p>
 
           {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-2 p-1 bg-muted rounded-xl mt-4 max-w-xs mx-auto text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('login');
-                setError(null);
-              }}
-              className={`py-2 rounded-lg transition cursor-pointer ${
-                mode === 'login'
-                  ? 'bg-card text-foreground shadow-xs font-bold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('register');
-                setError(null);
-              }}
-              className={`py-2 rounded-lg transition cursor-pointer ${
-                mode === 'register'
-                  ? 'bg-card text-foreground shadow-xs font-bold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
+          {mode !== 'forgot' ? (
+            <div className="grid grid-cols-2 p-1 bg-muted rounded-xl mt-4 max-w-xs mx-auto text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+                className={`py-2 rounded-lg transition cursor-pointer ${
+                  mode === 'login'
+                    ? 'bg-card text-foreground shadow-xs font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('register');
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+                className={`py-2 rounded-lg transition cursor-pointer ${
+                  mode === 'register'
+                    ? 'bg-card text-foreground shadow-xs font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+                className="text-xs text-primary font-bold hover:underline flex items-center space-x-1 cursor-pointer"
+              >
+                <span>← Back to Sign In</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content Body */}
@@ -124,11 +204,19 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
             </div>
           )}
 
+          {/* Info Banner */}
+          {infoMessage && (
+            <div className="mb-4 p-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs flex items-start space-x-2">
+              <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{infoMessage}</span>
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* REGISTER MODE SPECIFICS */}
             {mode === 'register' && (
               <>
-                {/* Account Type Selector */}
                 <div>
                   <label className="block text-xs font-semibold text-foreground mb-1.5">
                     I want to join GaadiGo to:
@@ -221,7 +309,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
               </>
             )}
 
-            {/* Email */}
+            {/* EMAIL (COMMON TO ALL MODES) */}
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1">
                 Email Address
@@ -232,48 +320,141 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
                   type="email"
                   required
                   value={email}
+                  disabled={mode === 'forgot' && forgotStep === 2}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-input bg-card focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-input bg-card focus:outline-none focus:ring-1 focus:ring-primary text-foreground disabled:opacity-70"
                 />
               </div>
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-input bg-card focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
-                />
+            {/* PASSWORD (LOGIN & REGISTER) */}
+            {mode !== 'forgot' && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-foreground">
+                    Password
+                  </label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot');
+                        setForgotStep(1);
+                        setError(null);
+                        setInfoMessage(null);
+                      }}
+                      className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-input bg-card focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Submit CTA */}
+            {/* FORGOT PASSWORD: STEP 2 INPUTS */}
+            {mode === 'forgot' && forgotStep === 2 && (
+              <>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-foreground">
+                      6-Digit Verification OTP
+                    </label>
+                    {simulatedOtp && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                        Demo OTP: {simulatedOtp}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={forgotOtp}
+                      onChange={(e) => setForgotOtp(e.target.value)}
+                      placeholder="Enter 6-digit code (or 123456)"
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-input bg-card font-mono tracking-widest focus:outline-none focus:ring-1 focus:ring-primary text-foreground font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                    <input
+                      type="password"
+                      required
+                      value={forgotNewPassword}
+                      onChange={(e) => setForgotNewPassword(e.target.value)}
+                      placeholder="Minimum 6 characters"
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-input bg-card focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                    <input
+                      type="password"
+                      required
+                      value={forgotConfirmPassword}
+                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                      placeholder="Re-enter new password"
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-input bg-card focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* SUBMIT BUTTON */}
             <button
               type="submit"
               disabled={loading}
               className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-xs uppercase tracking-wider shadow-glow hover:opacity-95 transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50"
             >
               {loading ? (
-                <span>Connecting to Server...</span>
+                <span>Processing...</span>
               ) : mode === 'login' ? (
                 <>
                   <span>Sign In Securely</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
-              ) : (
+              ) : mode === 'register' ? (
                 <>
                   <span>Create Account</span>
                   <CheckCircle className="w-4 h-4" />
+                </>
+              ) : forgotStep === 1 ? (
+                <>
+                  <span>Send Verification OTP</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  <span>Reset Password & Sign In</span>
+                  <Check className="w-4 h-4" />
                 </>
               )}
             </button>
@@ -282,7 +463,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
           {/* India Regulatory Security Footnote */}
           <div className="mt-4 text-center">
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              🔒 256-Bit SSL Encrypted. Direct MongoDB authentication & Kafka event streaming.
+              🔒 256-Bit SSL Encrypted. Direct MongoDB authentication & Kafka audit trail.
             </p>
           </div>
         </div>

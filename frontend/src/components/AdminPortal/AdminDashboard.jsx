@@ -37,8 +37,14 @@ export default function AdminDashboard({
   onViewKafkaEvents,
   onOpenAddListing,
   isActionLoading,
+  activeTab: externalActiveTab,
+  onTabChange: setExternalActiveTab,
+  hideTabs = false,
+  hideHeader = false,
 }) {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, users, vehicles, bookings, kyc, kafka
+  const [internalActiveTab, setInternalActiveTab] = useState('overview');
+  const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
+  const setActiveTab = setExternalActiveTab || setInternalActiveTab;
   const [rejectModalVehicle, setRejectModalVehicle] = useState(null);
   const [rejectReason, setRejectReason] = useState('Expired PUC Certificate on Parivahan Vahan portal');
 
@@ -91,186 +97,192 @@ export default function AdminDashboard({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-secondary text-secondary-foreground uppercase tracking-wider">
-              Platform Master Admin
-            </span>
-            <span className="text-xs text-muted-foreground font-medium">
-              • Full Data Control & Regulatory Audit
-            </span>
+      {!hideHeader && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-secondary text-secondary-foreground uppercase tracking-wider">
+                Platform Master Admin
+              </span>
+              <span className="text-xs text-muted-foreground font-medium">
+                • Full Data Control & Regulatory Audit
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-foreground mt-1 font-display">
+              System Administration Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              Real-time management across all users, registered fleet, bookings, KYC records, and escrow deposits.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground mt-1 font-display">
-            System Administration Portal
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Real-time management across all users, registered fleet, bookings, KYC records, and escrow deposits.
-          </p>
-        </div>
 
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <button
-            onClick={onRefreshData}
-            title="Refresh from MongoDB"
-            className="p-2.5 rounded-xl bg-card border border-border text-foreground hover:bg-muted transition cursor-pointer shadow-xs"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          {onOpenAddListing && (
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <button
-              onClick={onOpenAddListing}
-              className="px-3.5 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-xs font-bold transition flex items-center space-x-1.5 shadow-glow hover:opacity-95 cursor-pointer"
+              onClick={onRefreshData}
+              title="Refresh from MongoDB"
+              className="p-2.5 rounded-xl bg-card border border-border text-foreground hover:bg-muted transition cursor-pointer shadow-xs"
             >
-              <Plus className="w-4 h-4" />
-              <span>Register Vehicle</span>
+              <RefreshCw className="w-4 h-4" />
             </button>
-          )}
-          <button
-            onClick={onViewKafkaEvents}
-            className="px-3.5 py-2 rounded-xl bg-card border border-border hover:border-primary/50 text-foreground hover:text-primary text-xs font-bold transition cursor-pointer flex items-center space-x-1.5 shadow-xs"
-          >
-            <Activity className="w-4 h-4 text-primary animate-pulse" />
-            <span className="hidden sm:inline">Kafka Stream</span>
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-          <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
-            <span>Total Users</span>
-            <Users className="w-3.5 h-3.5 text-primary" />
+            {onOpenAddListing && (
+              <button
+                onClick={onOpenAddListing}
+                className="px-3.5 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-xs font-bold transition flex items-center space-x-1.5 shadow-glow hover:opacity-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Register Vehicle</span>
+              </button>
+            )}
+            <button
+              onClick={onViewKafkaEvents}
+              className="px-3.5 py-2 rounded-xl bg-card border border-border hover:border-primary/50 text-foreground hover:text-primary text-xs font-bold transition cursor-pointer flex items-center space-x-1.5 shadow-xs"
+            >
+              <Activity className="w-4 h-4 text-primary animate-pulse" />
+              <span className="hidden sm:inline">Kafka Stream</span>
+            </button>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-foreground font-display">{users.length}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Registered accounts</p>
         </div>
+      )}
 
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-          <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
-            <span>Fleet Listed</span>
-            <Car className="w-3.5 h-3.5 text-blue-500" />
+      {/* KPI Cards Row - displayed on overview tab or when tabs are shown */}
+      {(!hideTabs || activeTab === 'overview') && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
+              <span>Total Users</span>
+              <Users className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-foreground font-display">{users.length}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Registered accounts</p>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-foreground font-display">{vehicles.length}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{approvedVehicles.length} active live</p>
-        </div>
 
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-          <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
-            <span>Pending RTO</span>
-            <Clock className="w-3.5 h-3.5 text-amber-500" />
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
+              <span>Fleet Listed</span>
+              <Car className="w-3.5 h-3.5 text-blue-500" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-foreground font-display">{vehicles.length}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{approvedVehicles.length} active live</p>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-amber-600 font-display">{pendingVehicles.length}</p>
-          <p className="text-[10px] text-amber-600 font-semibold mt-0.5">Requires audit</p>
-        </div>
 
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-          <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
-            <span>Bookings</span>
-            <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
+              <span>Pending RTO</span>
+              <Clock className="w-3.5 h-3.5 text-amber-500" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-amber-600 font-display">{pendingVehicles.length}</p>
+            <p className="text-[10px] text-amber-600 font-semibold mt-0.5">Requires audit</p>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-foreground font-display">{bookings.length}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Total reservations</p>
-        </div>
 
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-          <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
-            <span>Escrow Held</span>
-            <IndianRupee className="w-3.5 h-3.5 text-secondary" />
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
+              <span>Bookings</span>
+              <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-foreground font-display">{bookings.length}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Total reservations</p>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-foreground font-display">
-            ₹{adminOverview?.securityDepositInEscrow?.toLocaleString('en-IN') || escrowBookings.reduce((sum, b) => sum + (b.securityDeposit || 0), 0).toLocaleString('en-IN')}
-          </p>
-          <p className="text-[10px] text-sky-600 font-bold mt-0.5">{escrowBookings.length} pending return</p>
-        </div>
 
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-          <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
-            <span>Total GMV</span>
-            <IndianRupee className="w-3.5 h-3.5 text-primary" />
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
+              <span>Escrow Held</span>
+              <IndianRupee className="w-3.5 h-3.5 text-secondary" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-foreground font-display">
+              ₹{adminOverview?.securityDepositInEscrow?.toLocaleString('en-IN') || escrowBookings.reduce((sum, b) => sum + (b.securityDeposit || 0), 0).toLocaleString('en-IN')}
+            </p>
+            <p className="text-[10px] text-sky-600 font-bold mt-0.5">{escrowBookings.length} pending return</p>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-foreground font-display">
-            ₹{adminOverview?.totalRevenue?.toLocaleString('en-IN') || bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0).toLocaleString('en-IN')}
-          </p>
-          <p className="text-[10px] text-emerald-600 font-bold mt-0.5">All UPI settled</p>
+
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between text-muted-foreground text-[11px] mb-1 font-medium">
+              <span>Total GMV</span>
+              <IndianRupee className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-foreground font-display">
+              ₹{adminOverview?.totalRevenue?.toLocaleString('en-IN') || bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0).toLocaleString('en-IN')}
+            </p>
+            <p className="text-[10px] text-emerald-600 font-bold mt-0.5">All UPI settled</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Tab Navigation */}
-      <div className="flex items-center space-x-1 sm:space-x-2 border-b border-border mb-6 overflow-x-auto pb-1">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'overview'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          <span>Pending Approvals</span>
-          {pendingVehicles.length > 0 && (
-            <span className="px-2 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-extrabold">
-              {pendingVehicles.length}
-            </span>
-          )}
-        </button>
+      {!hideTabs && (
+        <div className="flex items-center space-x-1 sm:space-x-2 border-b border-border mb-6 overflow-x-auto pb-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
+              activeTab === 'overview'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Pending Approvals</span>
+            {pendingVehicles.length > 0 && (
+              <span className="px-2 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-extrabold">
+                {pendingVehicles.length}
+              </span>
+            )}
+          </button>
 
-        <button
-          onClick={() => setActiveTab('vehicles')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'vehicles'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Car className="w-4 h-4" />
-          <span>All Vehicles ({vehicles.length})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('vehicles')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
+              activeTab === 'vehicles'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Car className="w-4 h-4" />
+            <span>All Vehicles ({vehicles.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'users'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Users & Roles ({users.length})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
+              activeTab === 'users'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Users & Roles ({users.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('bookings')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'bookings'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Calendar className="w-4 h-4" />
-          <span>Bookings & Escrow ({bookings.length})</span>
-          {escrowBookings.length > 0 && (
-            <span className="px-2 py-0.2 rounded-full text-[10px] bg-secondary text-secondary-foreground font-extrabold">
-              {escrowBookings.length}
-            </span>
-          )}
-        </button>
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
+              activeTab === 'bookings'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Bookings & Escrow ({bookings.length})</span>
+            {escrowBookings.length > 0 && (
+              <span className="px-2 py-0.2 rounded-full text-[10px] bg-secondary text-secondary-foreground font-extrabold">
+                {escrowBookings.length}
+              </span>
+            )}
+          </button>
 
-        <button
-          onClick={() => setActiveTab('kyc')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
-            activeTab === 'kyc'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <FileCheck className="w-4 h-4" />
-          <span>KYC Verifications ({kycRecords.length})</span>
-        </button>
-      </div>
+          <button
+            onClick={() => setActiveTab('kyc')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 shrink-0 ${
+              activeTab === 'kyc'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <FileCheck className="w-4 h-4" />
+            <span>KYC Verifications ({kycRecords.length})</span>
+          </button>
+        </div>
+      )}
 
       {/* TAB 1: Pending Approvals Queue */}
       {activeTab === 'overview' && (

@@ -216,10 +216,16 @@ The Apollo Server exposes the following core operations:
 - `getKafkaAuditEvents: [KafkaAuditEventModel!]!` — Live event log.
 - `getFaqs: [FaqModel!]!` — Dynamic FAQs from MongoDB.
 - `getReviews: [ReviewModel!]!` — Dynamic verified customer reviews.
+- `getTransactionHistory(filter: TransactionFilterInput): [TransactionModel!]!` — Real financial ledger (rentals, escrow holds, refunds, host earnings payouts).
+- `getFinanceSummary: FinanceSummaryModel!` — Financial breakdown (total spent, earnings, escrow held, refunded).
 
 #### Mutations
 - `registerUser(input: RegisterInput!): AuthPayloadModel!`
 - `loginUser(input: LoginInput!): AuthPayloadModel!`
+- `updateUserProfile(input: UpdateProfileInput!): UserModel!` — Update legal name, phone, city, avatar, DL & Aadhaar.
+- `changePassword(input: ChangePasswordInput!): Boolean!` — Authenticated bcrypt-hashed password change.
+- `requestPasswordReset(input: ForgotPasswordInput!): ForgotPasswordPayloadModel!` — 6-digit OTP generation (simulated in demo mode, SMS/SMTP in live mode).
+- `resetPasswordWithOtp(input: ResetPasswordInput!): AuthPayloadModel!` — Verifies OTP, updates bcrypt hash, and returns active session JWT.
 - `createVehicle(input: CreateVehicleInput!): VehicleModel!` *(HOST / ADMIN only)*
 - `approveVehicleListing(id: ID!): VehicleModel!` *(ADMIN only)*
 - `rejectVehicleListing(id: ID!, reason: String!): VehicleModel!` *(ADMIN only)*
@@ -253,9 +259,38 @@ The Apollo Server exposes the following core operations:
 
 ---
 
+## 💳 Razorpay Sandbox & Payment Integration
+
+The checkout flow integrates **Razorpay Standard Checkout** (`https://checkout.razorpay.com/v1/checkout.js`) with support for test UPI VPAs (`success@razorpay`), test credit/debit cards, and NetBanking:
+- **Sandbox Test Key**: Pre-configured with default sandbox test key (`rzp_test_1DP5mmOlF5G5ag`) or custom key via `VITE_RAZORPAY_KEY_ID`.
+- **Payment Verification**: Captures `razorpay_payment_id` as the transaction reference and generates an instant compliant tax invoice & booking voucher.
+- **Fail-safe Fallback**: In case the client browser blocks external third-party scripts or adblockers are active, a direct UPI simulation handler is provided to prevent booking abandonment.
+
+---
+
+## 🎛️ Demo Mode vs Live Mode (OTP & Notifications)
+
+The application includes an environment flag:
+```env
+DEMO_MODE=true  # Default: true
+```
+
+- **When `DEMO_MODE=true` (or unset)**:
+  - The 6-digit OTP generated for the **Forgot Password** self-service recovery is returned directly in the GraphQL payload (`simulatedOtp`).
+  - The frontend UI displays a notification banner showing the valid OTP code for testing.
+  - No external SMS gateway (Twilio, Gupshup, Fast2SMS) or SMTP gateway (SendGrid, AWS SES) credentials are required.
+
+- **When `DEMO_MODE=false`**:
+  - The API does **not** return the OTP in the GraphQL response (`simulatedOtp: null`).
+  - The backend dispatches the OTP via the configured external SMS/SMTP provider.
+  - The user enters the OTP received on their verified mobile number or email to complete the password reset.
+
+---
+
 ## 🔒 Security & Code Standards
 
 - **Password Hashing**: Passwords are encrypted with `bcryptjs` salt rounds before database storage.
 - **RBAC Security Guard**: Global `RolesGuard` inspects `Authorization: Bearer <token>` on all guarded routes.
 - **Vite Reverse Proxy**: All `/api` and `/graphql` calls are proxied locally to prevent CORS issues.
 - **Dynamic Data Integrity**: No hardcoded mock vehicles, rates, FAQs, reviews, or cities.
+

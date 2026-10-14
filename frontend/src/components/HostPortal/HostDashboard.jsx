@@ -26,10 +26,21 @@ export default function HostDashboard({
   onSelectVehicle,
   onApproveVehicle,
   onSwitchToAdmin,
+  initialScope = 'my',
+  initialStatusFilter = 'ALL',
+  hideHeader = false,
 }) {
   const { user } = useAuth();
-  const [scopeTab, setScopeTab] = useState('my'); // 'my' | 'all'
-  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'APPROVED' | 'PENDING_APPROVAL' | 'REJECTED'
+  const [scopeTab, setScopeTab] = useState(initialScope); // 'my' | 'all'
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter); // 'ALL' | 'APPROVED' | 'PENDING_APPROVAL' | 'REJECTED'
+
+  React.useEffect(() => {
+    if (initialScope) setScopeTab(initialScope);
+  }, [initialScope]);
+
+  React.useEffect(() => {
+    if (initialStatusFilter) setStatusFilter(initialStatusFilter);
+  }, [initialStatusFilter]);
 
   // Filter to the logged-in host's own vehicles
   const isMyVehicle = (v) => {
@@ -62,51 +73,53 @@ export default function HostDashboard({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-card mb-8 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent text-accent-foreground border border-primary/20">
-                Host / Fleet Owner Portal
-              </span>
-              <span className="text-xs text-muted-foreground font-medium">
-                • {user ? `Signed in as ${user.name}` : 'Demo Host Session'}
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center space-x-1">
-                <ShieldCheck className="w-3 h-3 mr-0.5" />
-                <span>Verified Host</span>
-              </span>
+      {!hideHeader && (
+        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-card mb-8 relative overflow-hidden">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent text-accent-foreground border border-primary/20">
+                  Host / Fleet Owner Portal
+                </span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  • {user ? `Signed in as ${user.name}` : 'Demo Host Session'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center space-x-1">
+                  <ShieldCheck className="w-3 h-3 mr-0.5" />
+                  <span>Verified Host</span>
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-foreground mt-2 font-display">
+                My Vehicle Listings & Fleet Earnings
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xl">
+                Manage your commercial yellow-plate & private lease vehicles, track Parivahan RTO compliance, and monitor direct UPI deposit payouts.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-foreground mt-2 font-display">
-              My Vehicle Listings & Fleet Earnings
-            </h1>
-            <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-              Manage your commercial yellow-plate & private lease vehicles, track Parivahan RTO compliance, and monitor direct UPI deposit payouts.
-            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={onOpenAddListing}
+                className="px-5 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-extrabold text-xs sm:text-sm shadow-glow flex items-center space-x-2 transition cursor-pointer hover:opacity-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Vehicle Listing</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={onOpenAddListing}
-              className="px-5 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-extrabold text-xs sm:text-sm shadow-glow flex items-center space-x-2 transition cursor-pointer hover:opacity-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Vehicle Listing</span>
-            </button>
+          {/* Regulatory Protection Strip */}
+          <div className="mt-6 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center space-x-2 text-emerald-600 font-semibold">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Escrow Protected: Host payout guarantee with ₹0 cancellation penalty on verified breakdowns</span>
+            </div>
+            <span className="text-[11px]">
+              Compliant with MoRTH Rent-a-Cab & P2P Lease Guidelines 2026
+            </span>
           </div>
         </div>
-
-        {/* Regulatory Protection Strip */}
-        <div className="mt-6 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center space-x-2 text-emerald-600 font-semibold">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>Escrow Protected: Host payout guarantee with ₹0 cancellation penalty on verified breakdowns</span>
-          </div>
-          <span className="text-[11px]">
-            Compliant with MoRTH Rent-a-Cab & P2P Lease Guidelines 2026
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

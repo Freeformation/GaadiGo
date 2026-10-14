@@ -13,6 +13,7 @@ export default function Navbar({
   onOpenAddListing,
   onOpenKafkaDrawer,
   onOpenAuthModal,
+  onSelectDashboardSubTab,
   kafkaEventCount = 0,
   renterBookingsCount = 0,
 }) {
@@ -89,60 +90,24 @@ export default function Navbar({
             >
               Rent a Vehicle
             </button>
-
-            {/* POST-LOGIN: My Dashboard (Dynamic based on role) */}
-            {isAuthenticated && (
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
-                  activeTab === 'dashboard'
-                    ? 'bg-gradient-primary text-primary-foreground shadow-glow'
-                    : 'text-foreground/90 hover:text-foreground hover:bg-muted border border-border'
-                }`}
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                <span>
-                  {role === 'ADMIN'
-                    ? 'Admin Dashboard'
-                    : role === 'HOST'
-                    ? 'Host Dashboard'
-                    : 'My Dashboard'}
-                </span>
-                {role === 'RENTER' && renterBookingsCount > 0 && (
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
-                    activeTab === 'dashboard'
-                      ? 'bg-white text-slate-900'
-                      : 'bg-primary text-primary-foreground'
-                  }`}>
-                    {renterBookingsCount}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* Admin Live Kafka Audit Stream Pulse */}
-            {isAuthenticated && role === 'ADMIN' && (
-              <button
-                onClick={onOpenKafkaDrawer}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 text-foreground/80 hover:text-foreground hover:bg-muted cursor-pointer"
-                title="View live Kafka message audit stream"
-              >
-                <Activity className="w-3.5 h-3.5 text-primary animate-pulse" />
-                <span>Kafka Stream</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-primary/10 text-primary font-bold text-[10px]">
-                  {kafkaEventCount}
-                </span>
-              </button>
-            )}
           </nav>
 
           {/* Action CTAs & Auth Controls */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* User Profile or Sign In */}
             {isAuthenticated ? (
-              <div className="flex items-center space-x-2 bg-muted/60 p-1 pl-2.5 rounded-xl border border-border">
+              <div
+                onClick={() => {
+                  setActiveTab('dashboard');
+                  if (onSelectDashboardSubTab) {
+                    onSelectDashboardSubTab('profile');
+                  }
+                }}
+                className="flex items-center space-x-2 bg-muted/60 hover:bg-muted/90 p-1 pl-2.5 rounded-xl border border-border cursor-pointer transition group"
+                title="Click to view & edit Profile and Security settings"
+              >
                 <div className="text-left hidden sm:block">
-                  <div className="text-xs font-bold text-foreground leading-tight">
+                  <div className="text-xs font-bold text-foreground leading-tight group-hover:text-primary transition">
                     {user?.name}
                   </div>
                   <div className="flex items-center space-x-1">
@@ -163,12 +128,15 @@ export default function Navbar({
                   </div>
                 </div>
 
-                <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xs shadow-xs">
+                <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xs shadow-xs group-hover:scale-105 transition-transform">
                   {user?.name?.charAt(0) || 'U'}
                 </div>
 
                 <button
-                  onClick={logout}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    logout();
+                  }}
                   title="Sign out"
                   className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-card transition cursor-pointer"
                 >

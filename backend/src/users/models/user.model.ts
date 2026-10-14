@@ -47,3 +47,15 @@ export class AuthPayloadModel {
   @Field(() => UserModel)
   user: UserModel;
 }
+
+@ObjectType()
+export class ForgotPasswordPayloadModel {
+  @Field()
+  success: boolean;
+
+  @Field()
+  message: string;
+
+  @Field({ nullable: true })
+  simulatedOtp?: string;
+}

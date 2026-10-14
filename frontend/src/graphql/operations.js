@@ -302,4 +302,92 @@ export const GET_REVIEWS = gql`
   }
 `;
 
+export const GET_TRANSACTION_HISTORY = gql`
+  query GetTransactionHistory($filter: TransactionFilterInput) {
+    getTransactionHistory(filter: $filter) {
+      id
+      transactionId
+      bookingId
+      vehicleTitle
+      vehicleRegistrationNumber
+      type
+      amount
+      flow
+      paymentMethod
+      status
+      partyName
+      partyPhone
+      partyRole
+      description
+      createdAt
+    }
+  }
+`;
+
+export const GET_FINANCE_SUMMARY = gql`
+  query GetFinanceSummary {
+    getFinanceSummary {
+      totalSpent
+      totalEarned
+      escrowHeld
+      escrowRefunded
+      totalTransactions
+    }
+  }
+`;
+
+export const UPDATE_USER_PROFILE = gql`
+  mutation UpdateUserProfile($userId: String!, $input: UpdateProfileInput!) {
+    updateUserProfile(userId: $userId, input: $input) {
+      id
+      name
+      email
+      phone
+      city
+      avatarUrl
+      role
+      isKycVerified
+      dlNumber
+      dlCategory
+      aadhaarMasked
+    }
+  }
+`;
+
+export const CHANGE_PASSWORD = gql`
+  mutation ChangePassword($userId: String!, $input: ChangePasswordInput!) {
+    changePassword(userId: $userId, input: $input)
+  }
+`;
+
+export const REQUEST_PASSWORD_RESET = gql`
+  mutation RequestPasswordReset($input: ForgotPasswordInput!) {
+    requestPasswordReset(input: $input) {
+      success
+      message
+      simulatedOtp
+    }
+  }
+`;
+
+export const RESET_PASSWORD_WITH_OTP = gql`
+  mutation ResetPasswordWithOtp($input: ResetPasswordInput!) {
+    resetPasswordWithOtp(input: $input) {
+      token
+      user {
+        id
+        name
+        email
+        phone
+        role
+        city
+        isKycVerified
+        dlNumber
+        avatarUrl
+      }
+    }
+  }
+`;
+
+
 

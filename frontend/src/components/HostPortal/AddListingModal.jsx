@@ -1,5 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { X, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, AlertCircle, Plus, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X,
+  ArrowRight,
+  ArrowLeft,
+  ShieldCheck,
+  Sparkles,
+  AlertCircle,
+  Plus,
+  Image as ImageIcon,
+  UploadCloud,
+  Camera,
+  Trash2,
+  Star,
+  CheckCircle2,
+  Loader2,
+  Link as LinkIcon,
+} from 'lucide-react';
 import { CITIES } from '../Navbar';
 import { useAuth } from '../../context/AuthContext';
 
@@ -90,6 +106,11 @@ export default function AddListingModal({ isOpen, onClose, onSubmitListing, isSu
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [newImageUrl, setNewImageUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     // Step 1: Basics
     title: '',
@@ -201,6 +222,111 @@ export default function AddListingModal({ isOpen, onClose, onSubmitListing, isSu
       }
     }
     setStep((s) => Math.min(5, s + 1));
+  };
+
+  const handleFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    setUploadError(null);
+
+    const fileList = Array.from(files);
+    const validFiles = fileList.filter((file) => {
+      if (!file.type.startsWith('image/')) {
+        setUploadError(`File "${file.name}" is not an image.`);
+        return false;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError(`File "${file.name}" exceeds the 10MB limit.`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) {
+      setIsUploading(false);
+      return;
+    }
+
+    try {
+      const uploadFormData = new FormData();
+      if (validFiles.length === 1) {
+        uploadFormData.append('file', validFiles[0]);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+        if (!res.ok) throw new Error('Upload server error');
+        const data = await res.json();
+        if (data.url) {
+          setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, data.url],
+          }));
+        }
+      } else {
+        validFiles.forEach((f) => uploadFormData.append('files', f));
+        const res = await fetch('/api/upload/multiple', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+        if (!res.ok) throw new Error('Upload server error');
+        const data = await res.json();
+        if (data.urls && data.urls.length > 0) {
+          setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, ...data.urls],
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('Backend upload fallback to base64 data URLs:', err);
+      const readPromises = validFiles.map((file) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        });
+      });
+      const dataUrls = await Promise.all(readPromises);
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...dataUrls],
+      }));
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleSetCoverPhoto = (idx) => {
+    if (idx === 0) return;
+    setFormData((prev) => {
+      const copy = [...prev.images];
+      const [chosen] = copy.splice(idx, 1);
+      copy.unshift(chosen);
+      return { ...prev, images: copy };
+    });
   };
 
   const handleSubmit = (e) => {
@@ -720,74 +846,212 @@ export default function AddListingModal({ isOpen, onClose, onSubmitListing, isSu
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-foreground uppercase tracking-wider">
-                    Vehicle Photo Gallery ({formData.images.length} photos)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const defaults = CATEGORY_DEFAULTS[formData.category] || CATEGORY_DEFAULTS.SCOOTY;
-                      setFormData((prev) => ({ ...prev, images: [...defaults.images] }));
-                    }}
-                    className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
-                  >
-                    Reset to High-Res Presets
-                  </button>
+                  <div>
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider">
+                      Vehicle Photo Gallery ({formData.images.length} photos)
+                    </label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      First photo is automatically displayed as the main listing cover card.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaults = CATEGORY_DEFAULTS[formData.category] || CATEGORY_DEFAULTS.SCOOTY;
+                        setFormData((prev) => ({ ...prev, images: [...defaults.images] }));
+                      }}
+                      className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
+                    >
+                      Reset to Presets
+                    </button>
+                    {formData.images.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, images: [] }))}
+                        className="text-[11px] text-rose-500 hover:underline font-semibold cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Drag & Drop Upload Zone */}
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`relative p-5 border-2 border-dashed rounded-2xl text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 group ${
+                    dragActive
+                      ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                      : 'border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => handleFiles(e.target.files)}
+                    className="hidden"
+                  />
+
+                  {isUploading ? (
+                    <div className="py-4 flex flex-col items-center space-y-2">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                      <p className="text-xs font-bold text-foreground">Uploading and optimizing photos...</p>
+                      <p className="text-[10px] text-muted-foreground">Generating high-speed previews</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-105 transition">
+                        <UploadCloud className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">
+                          Click to browse or drag & drop vehicle photos
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Supports PNG, JPG, WebP up to 10MB each • Upload exterior, side & dashboard angles
+                        </p>
+                      </div>
+                      <div className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-card border border-border text-xs font-semibold text-foreground group-hover:border-primary/40 shadow-xs">
+                        <Camera className="w-3.5 h-3.5 text-primary" />
+                        <span>Select Photos from Device</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {uploadError && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
 
                 {/* Thumbnails Grid */}
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  {formData.images.map((img, idx) => (
-                    <div key={idx} className="relative h-24 rounded-xl overflow-hidden border border-border group bg-muted">
-                      <img src={img} alt={`Angle ${idx + 1}`} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                        {formData.images.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
+                {formData.images.length > 0 && (
+                  <div className="mt-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {formData.images.map((img, idx) => (
+                        <div
+                          key={idx}
+                          className={`relative h-28 rounded-xl overflow-hidden border group bg-muted ${
+                            idx === 0 ? 'border-primary ring-2 ring-primary/30 shadow-xs' : 'border-border'
+                          }`}
+                        >
+                          <img
+                            src={img}
+                            alt={`Vehicle Photo ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          />
+
+                          {/* Hover Actions Overlay */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center space-x-2 p-2">
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                title="Make this the Cover Photo"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSetCoverPhoto(idx);
+                                }}
+                                className="px-2 py-1 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-bold flex items-center space-x-1 cursor-pointer transition shadow-xs"
+                              >
+                                <Star className="w-3 h-3 fill-current" />
+                                <span>Make Cover</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              title="Delete photo"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  images: prev.images.filter((_, i) => i !== idx),
+                                }));
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white cursor-pointer transition shadow-xs"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Cover Photo Badge or Index Badge */}
+                          {idx === 0 ? (
+                            <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-emerald-600/90 backdrop-blur-xs text-[10px] text-white font-bold flex items-center space-x-1 shadow-xs">
+                              <Star className="w-2.5 h-2.5 fill-current" />
+                              <span>Cover Photo</span>
+                            </span>
+                          ) : (
+                            <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[9px] text-white font-medium">
+                              Photo {idx + 1}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Collapsible Add Image by URL */}
+                <div className="mt-3 pt-1">
+                  {!showUrlInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(true)}
+                      className="text-[11px] text-muted-foreground hover:text-foreground font-semibold flex items-center space-x-1 cursor-pointer"
+                    >
+                      <LinkIcon className="w-3 h-3 text-primary" />
+                      <span>Or paste an external image URL</span>
+                    </button>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] text-muted-foreground font-semibold flex items-center space-x-1">
+                          <LinkIcon className="w-3 h-3 text-primary" />
+                          <span>Paste image URL (HTTPS)</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowUrlInput(false)}
+                          className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="url"
+                          value={newImageUrl}
+                          onChange={(e) => setNewImageUrl(e.target.value)}
+                          placeholder="https://images.unsplash.com/photo-..."
+                          className="flex-1 bg-card border border-input rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newImageUrl.trim()) {
                               setFormData((prev) => ({
                                 ...prev,
-                                images: prev.images.filter((_, i) => i !== idx),
+                                images: [...prev.images, newImageUrl.trim()],
                               }));
-                            }}
-                            className="p-1 rounded-full bg-rose-600 text-white text-xs cursor-pointer hover:bg-rose-700"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                              setNewImageUrl('');
+                            }
+                          }}
+                          className="px-3 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold flex items-center space-x-1 cursor-pointer transition shadow-xs"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add</span>
+                        </button>
                       </div>
-                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] text-white font-medium">
-                        Photo {idx + 1}
-                      </span>
                     </div>
-                  ))}
-                </div>
-
-                {/* Add Custom Image URL */}
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="url"
-                    value={newImageUrl}
-                    onChange={(e) => setNewImageUrl(e.target.value)}
-                    placeholder="Paste additional vehicle image URL (https://...)"
-                    className="flex-1 bg-card border border-input rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (newImageUrl.trim()) {
-                        setFormData((prev) => ({
-                          ...prev,
-                          images: [...prev.images, newImageUrl.trim()],
-                        }));
-                        setNewImageUrl('');
-                      }
-                    }}
-                    className="px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-bold border border-border flex items-center space-x-1 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
-                  </button>
+                  )}
                 </div>
               </div>
 

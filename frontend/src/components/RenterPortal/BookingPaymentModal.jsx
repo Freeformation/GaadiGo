@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { X, Lock, CheckCircle2, ArrowRight, QrCode, AlertCircle, Smartphone } from 'lucide-react';
+import {
+  X,
+  Lock,
+  CheckCircle2,
+  ArrowRight,
+  QrCode,
+  AlertCircle,
+  Smartphone,
+  CreditCard,
+  Building2,
+  Sparkles,
+  ShieldCheck
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function BookingPaymentModal({
@@ -11,7 +23,7 @@ export default function BookingPaymentModal({
   isSubmitting,
 }) {
   const { user } = useAuth();
-  const [paymentMethod, setPaymentMethod] = useState('UPI_GPAY');
+  const [paymentMethod, setPaymentMethod] = useState('RAZORPAY_SANDBOX');
   const [upiId, setUpiId] = useState(user?.email ? `${user.email.split('@')[0]}@okhdfcbank` : '');
   const [agreementChecked, setAgreementChecked] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -21,7 +33,110 @@ export default function BookingPaymentModal({
 
   const vehicle = bookingData.vehicle;
 
+  // Dynamically load Razorpay standard checkout script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayCheckout = async () => {
+    setError(null);
+    if (!agreementChecked) {
+      setError('Please accept the digital bailment and rental agreement.');
+      return;
+    }
+
+    setProcessing(true);
+    const isLoaded = await loadRazorpayScript();
+    if (!isLoaded) {
+      setProcessing(false);
+      setError('Could not load Razorpay SDK. Please check your internet connection or use UPI Direct.');
+      return;
+    }
+
+    const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
+
+    const options = {
+      key: rzpKey,
+      amount: Math.round((bookingData.grandTotal || 999) * 100), // in paise
+      currency: 'INR',
+      name: 'GaadiGo Mobility India',
+      description: `Rental: ${vehicle.title} (${vehicle.registrationNumber})`,
+      image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=200',
+      handler: async function (response) {
+        try {
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() + 1);
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + (bookingData.totalDays || 1));
+
+          const input = {
+            vehicleId: vehicle.id,
+            renterName: bookingData.renterName || user?.name || 'Verified Renter',
+            renterPhone: bookingData.renterPhone || user?.phone || '+91 99000 00000',
+            renterEmail: bookingData.renterEmail || user?.email || 'renter@gaadigo.in',
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            totalDays: bookingData.totalDays,
+            pickupType: bookingData.pickupType,
+            deliveryAddress: vehicle.areaHub,
+            paymentMethod: 'RAZORPAY_SANDBOX',
+            paymentTransactionId: response.razorpay_payment_id || `rzp_test_${Date.now()}`,
+          };
+
+          const result = await onSubmitBookingMutation(input);
+          setProcessing(false);
+          onBookingSuccess(result);
+        } catch (err) {
+          setProcessing(false);
+          setError(err.message || 'Payment confirmation failed.');
+        }
+      },
+      prefill: {
+        name: bookingData.renterName || user?.name || 'Renter',
+        email: bookingData.renterEmail || user?.email || 'renter@gaadigo.in',
+        contact: (bookingData.renterPhone || user?.phone || '9999999999')
+          .replace(/[^0-9]/g, '')
+          .slice(-10),
+      },
+      theme: {
+        color: '#f97316',
+      },
+      modal: {
+        ondismiss: function () {
+          setProcessing(false);
+        },
+      },
+    };
+
+    try {
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (resp) {
+        setProcessing(false);
+        setError(`Payment failed: ${resp.error?.description || 'Transaction cancelled'}`);
+      });
+      rzp.open();
+    } catch (err) {
+      setProcessing(false);
+      setError(err.message || 'Failed to initialize Razorpay Checkout.');
+    }
+  };
+
   const handlePay = async () => {
+    if (paymentMethod === 'RAZORPAY_SANDBOX') {
+      await handleRazorpayCheckout();
+      return;
+    }
+
     setError(null);
 
     if (!agreementChecked) {
@@ -78,7 +193,9 @@ export default function BookingPaymentModal({
               <Lock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-foreground font-display">NPCI Unified Payments Checkout</h3>
+              <h3 className="text-sm font-bold text-foreground font-display">
+                Razorpay Sandbox & UPI Payments Checkout
+              </h3>
               <p className="text-[11px] text-muted-foreground">Bank-Grade Escrow Security Deposit</p>
             </div>
           </div>
@@ -136,12 +253,12 @@ export default function BookingPaymentModal({
             </label>
             <div className="grid grid-cols-2 gap-2">
               {[
+                { id: 'RAZORPAY_SANDBOX', name: 'Razorpay Sandbox', icon: '⚡', highlight: true },
                 { id: 'UPI_GPAY', name: 'Google Pay (UPI)', icon: '📱' },
                 { id: 'UPI_PHONEPE', name: 'PhonePe (UPI)', icon: '🟣' },
                 { id: 'UPI_PAYTM', name: 'Paytm UPI', icon: '🔵' },
-                { id: 'UPI_BHIM_QR', name: 'Scan NPCI QR Code', icon: '📷' },
-                { id: 'CREDIT_DEBIT_CARD', name: 'Debit / Credit Card', icon: '💳' },
-                { id: 'NET_BANKING', name: 'NetBanking (NEFT/RTGS)', icon: '🏛️' },
+                { id: 'UPI_BHIM_QR', name: 'Scan NPCI QR', icon: '📷' },
+                { id: 'CREDIT_DEBIT_CARD', name: 'Cards / NetBanking', icon: '💳' },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -149,7 +266,7 @@ export default function BookingPaymentModal({
                   onClick={() => setPaymentMethod(m.id)}
                   className={`p-3 rounded-xl border text-left text-xs transition cursor-pointer flex items-center space-x-2 ${
                     paymentMethod === m.id
-                      ? 'bg-accent/40 border-primary text-foreground font-bold shadow-xs'
+                      ? 'bg-accent/40 border-primary text-foreground font-bold shadow-xs ring-1 ring-primary/30'
                       : 'bg-card border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
                   }`}
                 >
@@ -160,12 +277,27 @@ export default function BookingPaymentModal({
             </div>
           </div>
 
+          {/* Razorpay Sandbox Notice */}
+          {paymentMethod === 'RAZORPAY_SANDBOX' && (
+            <div className="p-3.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-primary/20 rounded-xl text-xs space-y-1">
+              <div className="flex items-center space-x-1.5 font-bold text-primary">
+                <Sparkles className="w-4 h-4" />
+                <span>Razorpay Sandbox Gateway Active</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Supports test cards, test UPI VPAs (e.g. <code className="text-foreground font-mono">success@razorpay</code>), and test NetBanking with ₹0 real money charged.
+              </p>
+            </div>
+          )}
+
           {/* UPI ID input or QR display */}
           {paymentMethod === 'UPI_BHIM_QR' ? (
             <div className="p-4 bg-muted/40 rounded-xl border border-border text-center space-y-3">
               <div className="w-36 h-36 mx-auto bg-white p-2 rounded-xl border border-border shadow-xs flex items-center justify-center">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(dynamicUpiUri)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
+                    dynamicUpiUri,
+                  )}`}
                   alt="NPCI UPI QR Code"
                   className="w-full h-full object-contain"
                 />
@@ -222,7 +354,9 @@ export default function BookingPaymentModal({
           >
             <span>
               {processing || isSubmitting
-                ? 'Processing Payment & Emitting Kafka Event...'
+                ? 'Connecting to Gateway & Confirming...'
+                : paymentMethod === 'RAZORPAY_SANDBOX'
+                ? `Launch Razorpay Sandbox (₹${bookingData.grandTotal.toLocaleString('en-IN')})`
                 : `Pay ₹${bookingData.grandTotal.toLocaleString('en-IN')} & Confirm Reservation`}
             </span>
             {!processing && <ArrowRight className="w-4 h-4" />}

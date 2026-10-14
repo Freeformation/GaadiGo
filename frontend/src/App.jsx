@@ -45,6 +45,7 @@ import { useEffect } from 'react';
 export default function App() {
   const { user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('landing'); // landing, renter, dashboard
+  const [dashboardSubTab, setDashboardSubTab] = useState('overview'); // overview, finance, profile
   const [selectedCity, setSelectedCity] = useState('All Cities');
   const [cities, setCities] = useState(['All Cities']);
 
@@ -249,29 +250,32 @@ export default function App() {
         </div>
       )}
 
-      {/* Navbar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        selectedCity={selectedCity}
-        setSelectedCity={setSelectedCity}
-        cities={cities}
-        onOpenAddListing={() => {
-          if (!isAuthenticated) {
-            setAuthModalMode('register');
+      {/* Public Navbar - Hidden on full-screen Dashboard view when authenticated */}
+      {!(activeTab === 'dashboard' && isAuthenticated) && (
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          selectedCity={selectedCity}
+          setSelectedCity={setSelectedCity}
+          cities={cities}
+          onOpenAddListing={() => {
+            if (!isAuthenticated) {
+              setAuthModalMode('register');
+              setIsAuthModalOpen(true);
+            } else {
+              setIsAddListingOpen(true);
+            }
+          }}
+          onOpenKafkaDrawer={() => setIsKafkaDrawerOpen(true)}
+          onOpenAuthModal={(mode = 'login') => {
+            setAuthModalMode(mode);
             setIsAuthModalOpen(true);
-          } else {
-            setIsAddListingOpen(true);
-          }
-        }}
-        onOpenKafkaDrawer={() => setIsKafkaDrawerOpen(true)}
-        onOpenAuthModal={(mode = 'login') => {
-          setAuthModalMode(mode);
-          setIsAuthModalOpen(true);
-        }}
-        kafkaEventCount={kafkaEvents.length}
-        renterBookingsCount={renterBookingsCount}
-      />
+          }}
+          onSelectDashboardSubTab={setDashboardSubTab}
+          kafkaEventCount={kafkaEvents.length}
+          renterBookingsCount={renterBookingsCount}
+        />
+      )}
 
       {/* Main View Port */}
       <main className="flex-1">
@@ -398,6 +402,9 @@ export default function App() {
                 setActiveTab('vehicle-detail');
               }}
               isActionLoading={isApprovingVehicle || isRejectingVehicle || isReleasingDeposit}
+              subTab={dashboardSubTab}
+              onSubTabChange={setDashboardSubTab}
+              onBackToHome={() => setActiveTab('landing')}
             />
           )
         )}
@@ -412,8 +419,10 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <Footer setActiveTab={setActiveTab} />
+      {/* Public Footer - Hidden on full-screen Dashboard view when authenticated */}
+      {!(activeTab === 'dashboard' && isAuthenticated) && (
+        <Footer setActiveTab={setActiveTab} />
+      )}
 
       {/* Modals */}
       {/* 1. Add Listing Modal (5-Step India RTO Compliance) */}

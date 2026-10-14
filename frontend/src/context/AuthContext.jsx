@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useMutation } from '@apollo/client/react';
-import { LOGIN_USER, REGISTER_USER } from '../graphql/operations';
+import {
+  LOGIN_USER,
+  REGISTER_USER,
+  UPDATE_USER_PROFILE,
+  CHANGE_PASSWORD,
+  REQUEST_PASSWORD_RESET,
+  RESET_PASSWORD_WITH_OTP,
+} from '../graphql/operations';
 
 const AuthContext = createContext(null);
 
@@ -27,6 +34,10 @@ export function AuthProvider({ children }) {
 
   const [loginMutation] = useMutation(LOGIN_USER);
   const [registerMutation] = useMutation(REGISTER_USER);
+  const [updateProfileMutation] = useMutation(UPDATE_USER_PROFILE);
+  const [changePasswordMutation] = useMutation(CHANGE_PASSWORD);
+  const [requestResetMutation] = useMutation(REQUEST_PASSWORD_RESET);
+  const [resetPasswordMutation] = useMutation(RESET_PASSWORD_WITH_OTP);
 
   useEffect(() => {
     try {
@@ -74,6 +85,57 @@ export function AuthProvider({ children }) {
     throw new Error('Invalid registration response');
   };
 
+  const updateProfile = async (fields) => {
+    if (!user?.id) throw new Error('You must be signed in to update your profile.');
+    const res = await updateProfileMutation({
+      variables: {
+        userId: user.id,
+        input: fields,
+      },
+    });
+    const updated = res.data?.updateUserProfile;
+    if (updated) {
+      setUser((prev) => ({ ...prev, ...updated }));
+      return updated;
+    }
+    throw new Error('Failed to update profile');
+  };
+
+  const changePassword = async (oldPassword, newPassword) => {
+    if (!user?.id) throw new Error('You must be signed in to change your password.');
+    const res = await changePasswordMutation({
+      variables: {
+        userId: user.id,
+        input: { oldPassword, newPassword },
+      },
+    });
+    return res.data?.changePassword;
+  };
+
+  const requestPasswordReset = async (email) => {
+    const res = await requestResetMutation({
+      variables: {
+        input: { email },
+      },
+    });
+    return res.data?.requestPasswordReset;
+  };
+
+  const resetPasswordWithOtp = async ({ email, otp, newPassword }) => {
+    const res = await resetPasswordMutation({
+      variables: {
+        input: { email, otp, newPassword },
+      },
+    });
+    const payload = res.data?.resetPasswordWithOtp;
+    if (payload?.token && payload?.user) {
+      setUser(payload.user);
+      setToken(payload.token);
+      return payload.user;
+    }
+    throw new Error('Failed to reset password');
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -91,6 +153,10 @@ export function AuthProvider({ children }) {
         isAuthenticated: Boolean(token && user),
         login,
         register,
+        updateProfile,
+        changePassword,
+        requestPasswordReset,
+        resetPasswordWithOtp,
         logout,
         updateUser,
       }}

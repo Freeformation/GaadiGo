@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-export type BookingDocument = Booking & Document;
+export type BookingDocument = Booking & Document & { createdAt?: Date; updatedAt?: Date };
 
 @Schema({ timestamps: true })
 export class Booking {

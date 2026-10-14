@@ -1,7 +1,14 @@
 import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { UsersService } from './users.service';
-import { UserModel, AuthPayloadModel } from './models/user.model';
-import { RegisterInput, LoginInput } from './dto/auth.dto';
+import { UserModel, AuthPayloadModel, ForgotPasswordPayloadModel } from './models/user.model';
+import {
+  RegisterInput,
+  LoginInput,
+  UpdateProfileInput,
+  ChangePasswordInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+} from './dto/auth.dto';
 
 @Resolver(() => UserModel)
 export class UsersResolver {
@@ -39,6 +46,41 @@ export class UsersResolver {
   @Mutation(() => AuthPayloadModel)
   async loginUser(@Args('input') input: LoginInput): Promise<AuthPayloadModel> {
     const { user, token } = await this.usersService.login(input);
+    return {
+      token,
+      user: this.mapToModel(user),
+    };
+  }
+
+  @Mutation(() => UserModel)
+  async updateUserProfile(
+    @Args('userId') userId: string,
+    @Args('input') input: UpdateProfileInput,
+  ): Promise<UserModel> {
+    const updated = await this.usersService.updateProfile(userId, input);
+    return this.mapToModel(updated);
+  }
+
+  @Mutation(() => Boolean)
+  async changePassword(
+    @Args('userId') userId: string,
+    @Args('input') input: ChangePasswordInput,
+  ): Promise<boolean> {
+    return this.usersService.changePassword(userId, input);
+  }
+
+  @Mutation(() => ForgotPasswordPayloadModel)
+  async requestPasswordReset(
+    @Args('input') input: ForgotPasswordInput,
+  ): Promise<ForgotPasswordPayloadModel> {
+    return this.usersService.requestPasswordReset(input.email);
+  }
+
+  @Mutation(() => AuthPayloadModel)
+  async resetPasswordWithOtp(
+    @Args('input') input: ResetPasswordInput,
+  ): Promise<AuthPayloadModel> {
+    const { user, token } = await this.usersService.resetPasswordWithOtp(input);
     return {
       token,
       user: this.mapToModel(user),

@@ -12,6 +12,10 @@ import { KycModule } from './kyc/kyc.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { AdminModule } from './admin/admin.module';
 import { ContentModule } from './content/content.module';
+import { FinanceModule } from './finance/finance.module';
+import { UploadModule } from './upload/upload.module';
+import { PaymentsModule } from './payments/payments.module';
+import { NotificationModule } from './notifications/notification.module';
 
 @Module({
   imports: [
@@ -32,6 +36,10 @@ import { ContentModule } from './content/content.module';
     BookingsModule,
     AdminModule,
     ContentModule,
+    FinanceModule,
+    UploadModule,
+    PaymentsModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}
