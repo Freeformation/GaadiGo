@@ -39,7 +39,7 @@ export class VehiclesResolver {
 
   @Mutation(() => VehicleModel)
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'HOST')
   async updateVehicleStatus(
     @Args('id', { type: () => ID }) id: string,
     @Args('status') status: string,

@@ -38,6 +38,7 @@ export default function DashboardPage({
   onOpenAddListing,
   onExploreVehicles,
   onViewVoucher,
+  onSelectVehicle,
   isActionLoading,
 }) {
   const { user } = useAuth();
@@ -67,6 +68,8 @@ export default function DashboardPage({
       <HostDashboard
         vehicles={vehicles}
         onOpenAddListing={onOpenAddListing}
+        onSelectVehicle={onSelectVehicle}
+        onApproveVehicle={onApproveVehicle}
         onSwitchToAdmin={() => {}}
       />
     );

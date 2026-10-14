@@ -4,6 +4,7 @@ export const GET_VEHICLES = gql`
   query GetVehicles($filter: VehicleFilterInput) {
     getVehicles(filter: $filter) {
       id
+      hostId
       title
       category
       brand

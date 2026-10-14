@@ -2,6 +2,9 @@ import { InputType, Field, Float, Int } from '@nestjs/graphql';
 
 @InputType()
 export class CreateVehicleInput {
+  @Field({ nullable: true })
+  hostId?: string;
+
   @Field()
   hostName: string;
 

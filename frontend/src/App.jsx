@@ -28,6 +28,7 @@ import HostDashboard from './components/HostPortal/HostDashboard';
 import DashboardPage from './components/Dashboard/DashboardPage';
 
 import VehicleCatalog from './components/RenterPortal/VehicleCatalog';
+import VehicleDetailPage from './components/RenterPortal/VehicleDetailPage';
 import VehicleDetailModal from './components/RenterPortal/VehicleDetailModal';
 import RenterKYCModal from './components/RenterPortal/RenterKYCModal';
 import BookingPaymentModal from './components/RenterPortal/BookingPaymentModal';
@@ -67,6 +68,14 @@ export default function App() {
   const [paymentBookingData, setPaymentBookingData] = useState(null);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [isKafkaDrawerOpen, setIsKafkaDrawerOpen] = useState(false);
+  const [toastNotification, setToastNotification] = useState(null);
+
+  useEffect(() => {
+    if (toastNotification) {
+      const timer = setTimeout(() => setToastNotification(null), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastNotification]);
 
   // Real GraphQL Queries to MongoDB
   const {
@@ -181,8 +190,12 @@ export default function App() {
   const handleListingSubmit = async (input) => {
     try {
       await createVehicleMutation({ variables: { input } });
+      await refetchVehicles();
       setIsAddListingOpen(false);
       setActiveTab('dashboard');
+      setToastNotification(
+        `🎉 Vehicle "${input.title}" (${input.registrationNumber}) submitted successfully! It is now pending Parivahan RTO verification.`
+      );
     } catch (err) {
       alert('Error creating listing: ' + err.message);
     }
@@ -191,6 +204,8 @@ export default function App() {
   const handleApproveVehicle = async (id) => {
     try {
       await approveVehicleMutation({ variables: { id } });
+      await refetchVehicles();
+      setToastNotification('✅ Vehicle listing verified and marked LIVE on the public catalog!');
     } catch (err) {
       alert('Error approving listing: ' + err.message);
     }
@@ -221,6 +236,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+      {/* Toast Notification Banner */}
+      {toastNotification && (
+        <div className="bg-gradient-primary text-primary-foreground py-2.5 px-4 text-xs sm:text-sm font-bold flex items-center justify-between shadow-md sticky top-0 z-50 animate-in slide-in-from-top duration-300">
+          <div className="flex-1 text-center">{toastNotification}</div>
+          <button
+            onClick={() => setToastNotification(null)}
+            className="ml-3 text-white/80 hover:text-white font-black p-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -269,7 +297,10 @@ export default function App() {
 
             <VehicleCategories
               vehicles={vehicles}
-              onSelectVehicle={(v) => setDetailVehicle(v)}
+              onSelectVehicle={(v) => {
+                setDetailVehicle(v);
+                setActiveTab('vehicle-detail');
+              }}
               onExploreCategory={() => setActiveTab('renter')}
             />
 
@@ -289,7 +320,21 @@ export default function App() {
             selectedCity={selectedCity}
             setSelectedCity={setSelectedCity}
             cities={cities}
-            onSelectVehicle={(v) => setDetailVehicle(v)}
+            onSelectVehicle={(v) => {
+              setDetailVehicle(v);
+              setActiveTab('vehicle-detail');
+            }}
+          />
+        )}
+
+        {/* 2b. Dedicated Vehicle Detail Page */}
+        {activeTab === 'vehicle-detail' && (
+          <VehicleDetailPage
+            vehicle={detailVehicle}
+            onBack={() => setActiveTab('renter')}
+            onProceedToKyc={(bookingData) => {
+              setKycBookingData(bookingData);
+            }}
           />
         )}
 
@@ -348,6 +393,10 @@ export default function App() {
               onOpenAddListing={() => setIsAddListingOpen(true)}
               onExploreVehicles={() => setActiveTab('renter')}
               onViewVoucher={(b) => setConfirmedBooking(b)}
+              onSelectVehicle={(v) => {
+                setDetailVehicle(v);
+                setActiveTab('vehicle-detail');
+              }}
               isActionLoading={isApprovingVehicle || isRejectingVehicle || isReleasingDeposit}
             />
           )
@@ -375,16 +424,7 @@ export default function App() {
         isSubmitting={isCreatingVehicle}
       />
 
-      {/* 2. Vehicle Detail Modal */}
-      <VehicleDetailModal
-        vehicle={detailVehicle}
-        isOpen={Boolean(detailVehicle)}
-        onClose={() => setDetailVehicle(null)}
-        onProceedToKyc={(bookingData) => {
-          setDetailVehicle(null);
-          setKycBookingData(bookingData);
-        }}
-      />
+
 
       {/* 3. Renter DigiLocker & DL KYC Modal */}
       <RenterKYCModal

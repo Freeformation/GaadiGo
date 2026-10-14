@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Vehicle, VehicleDocument } from './schemas/vehicle.schema';
 import { CreateVehicleInput, VehicleFilterInput } from './dto/vehicle.dto';
 import { KafkaProducerService } from '../kafka/kafka.producer.service';
@@ -17,6 +17,7 @@ export class VehiclesService {
     // Default to PENDING_APPROVAL unless already certified
     const newVehicle = new this.vehicleModel({
       ...input,
+      hostId: input.hostId ? new Types.ObjectId(input.hostId) : undefined,
       status: 'PENDING_APPROVAL',
       rcStatus: 'PENDING',
       rating: 5.0,
