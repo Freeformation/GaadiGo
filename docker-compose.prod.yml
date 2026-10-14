@@ -1,0 +1,54 @@
+services:
+  # 1. MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: vahaanrent
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  # 2. VahaanRent Backend API (NestJS, GraphQL, Kafka, REST)
+  backend:
+    build:
+      context: .
+      target: backend-prod
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGODB_URI: mongodb://mongodb:27017/vahaanrent
+      DEMO_MODE: "false"
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-rzp_test_1DP5mmOlF5G5ag}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-sandbox_secret_vahaan_secure_2026}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-support@vahaanrent.in}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - mongodb
+
+  # 3. VahaanRent Web Client (Vite, React, Tailwind)
+  frontend:
+    build:
+      context: .
+      target: frontend-prod
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+  uploads_data:
