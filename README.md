@@ -256,6 +256,11 @@ The Apollo Server exposes the following core operations:
 | `GET` | `/api/admin/overview` | ADMIN | Retrieve regulatory & financial KPIs |
 | `GET` | `/api/content/faqs` | Public | Fetch dynamic FAQs |
 | `GET` | `/api/content/reviews` | Public | Fetch dynamic verified reviews |
+| `POST` | `/api/upload` | Public / Auth | Upload single vehicle/avatar photo (multipart/form-data) |
+| `POST` | `/api/upload/multiple` | Public / Auth | Batch upload up to 10 vehicle photos with validation |
+| `GET` | `/api/payments/config` | Public | Retrieve public Razorpay key ID |
+| `POST` | `/api/payments/create-order` | Public / Auth | Generate server-side Razorpay order in INR paise |
+| `POST` | `/api/payments/verify` | Public / Auth | Cryptographic HMAC-SHA256 payment signature verification |
 
 ---
 
@@ -291,6 +296,86 @@ DEMO_MODE=true  # Default: true
 
 - **Password Hashing**: Passwords are encrypted with `bcryptjs` salt rounds before database storage.
 - **RBAC Security Guard**: Global `RolesGuard` inspects `Authorization: Bearer <token>` on all guarded routes.
-- **Vite Reverse Proxy**: All `/api` and `/graphql` calls are proxied locally to prevent CORS issues.
+- **Vite Reverse Proxy**: All `/api`, `/graphql`, and `/uploads` calls are proxied locally to prevent CORS issues.
 - **Dynamic Data Integrity**: No hardcoded mock vehicles, rates, FAQs, reviews, or cities.
+
+---
+
+## 📋 Production TODO Checklist (Tokens & Keys Required)
+
+When transitioning the platform from sandbox/development to a **live production environment**, configure the following environment variables in your server's `.env` files. 
+
+> **Smart Fallback Guarantee**: The codebase includes graceful fallbacks. If any external key is omitted, the platform runs in sandbox/simulation mode without crashing or blocking users.
+
+| Service | Environment Variable | Required For | Purpose & Description | Where to Obtain |
+| :--- | :--- | :--- | :--- | :--- |
+| **Razorpay (India Gateway)** | `RAZORPAY_KEY_ID`<br>`RAZORPAY_KEY_SECRET`<br>`RAZORPAY_WEBHOOK_SECRET` | Live Payments | Server-to-server order generation, UPI/Card checkout, and HMAC-SHA256 cryptographic signature verification. | [Razorpay Dashboard $\rightarrow$ API Keys](https://dashboard.razorpay.com/#/access/api-keys) |
+| **Database (MongoDB Atlas)** | `MONGODB_URI` | Live Database | Multi-node replica set with automated backups, indexing, and SSL encryption. | [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) |
+| **Live Gateways Mode** | `DEMO_MODE=false` | Live Enforcement | Disables simulated OTPs and enforces real SMS/SMTP dispatch. | Server `.env` |
+| **SMS / WhatsApp Gateway** | `TWILIO_ACCOUNT_SID`<br>`TWILIO_AUTH_TOKEN`<br>`TWILIO_PHONE_NUMBER` | Mobile OTP & PINs | Live SMS dispatch for Forgot Password OTPs, booking confirmations, and 4-digit keyless access codes. | [Twilio Console](https://console.twilio.com/) (or Fast2SMS / MSG91) |
+| **Transactional Email (SMTP)** | `SMTP_HOST`<br>`SMTP_PORT`<br>`SMTP_USER`<br>`SMTP_PASS`<br>`EMAIL_FROM` | Invoices & Receipts | Automated GST tax invoices, booking vouchers, and account recovery emails. | SendGrid, AWS SES, Resend, or Google Workspace App Password |
+| **Cloud Object Storage** | `CLOUDINARY_CLOUD_NAME`<br>`CLOUDINARY_API_KEY`<br>`CLOUDINARY_API_SECRET` | Media Uploads | Persistent cloud storage for multi-angle vehicle inspection photos and KYC documents (or AWS S3). | [Cloudinary](https://cloudinary.com/) (25GB Free Tier) or AWS S3 |
+| **Security & JWT** | `JWT_SECRET` | Session Security | Cryptographic token signing for user sessions (min 64 random characters). | Run `openssl rand -hex 32` |
+| **Domain & CORS** | `FRONTEND_URL`<br>`VITE_API_URL` | Cross-Origin | Allows production frontend domain to securely communicate with the backend API. | Your custom domain (e.g. `https://vahaanrent.in`) |
+
+---
+
+## 🚢 Production Deployment Guide
+
+Pre-configured production templates are provided:
+- Backend: [`backend/.env.production.example`](backend/.env.production.example)
+- Frontend: [`frontend/.env.production.example`](frontend/.env.production.example)
+- Multi-Stage Dockerfile: [`Dockerfile`](Dockerfile)
+- Production Compose: [`docker-compose.prod.yml`](docker-compose.prod.yml)
+
+### Option 1: Docker Compose Production (Single-Command)
+```bash
+# 1. Clone repository on your VPS / Cloud VM (Ubuntu, Debian, AWS EC2)
+git clone <repo-url>
+cd rent-out-as-new
+
+# 2. Copy production environment variables and add your live keys
+cp backend/.env.production.example backend/.env
+cp frontend/.env.production.example frontend/.env
+
+# 3. Build and launch all production containers
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 4. Check container health
+docker compose -f docker-compose.prod.yml ps
+```
+
+### Option 2: Cloud PaaS Deployment
+- **Frontend** (Vercel / Netlify / Cloudflare Pages):
+  - Root directory: `frontend/`
+  - Build command: `npm run build`
+  - Output directory: `dist`
+  - Environment variable: `VITE_API_URL=https://api.yourdomain.com/graphql`, `VITE_RAZORPAY_KEY_ID=rzp_live_...`
+- **Backend** (Render / Railway / AWS ECS):
+  - Root directory: `backend/`
+  - Build command: `npm run build`
+  - Start command: `node dist/main.js`
+  - Environment variables: Add all variables from [`backend/.env.production.example`](backend/.env.production.example).
+
+---
+
+## 🧪 Automated End-to-End Test Suite
+
+Run the automated 10-stage integration test suite to verify the complete platform lifecycle:
+
+```bash
+node scratch/test-full-lifecycle.js
+```
+
+**Stages tested:**
+1. User Registration & JWT Authentication
+2. MoRTH DL & UIDAI Verhoeff Checksum KYC Validation
+3. Multi-Angle Vehicle Photo Upload via REST API
+4. Host Fleet Listing Creation
+5. Admin Regulatory Review & Vehicle Approval
+6. Server-Side Razorpay Order Generation
+7. HMAC-SHA256 Cryptographic Signature Verification
+8. Confirmed Booking & Keyless PIN Issuance
+9. Financial Ledger & Escrow Accounting Audit
+10. Forgot Password & Self-Service OTP Reset Flow
 
